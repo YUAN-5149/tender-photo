@@ -145,13 +145,11 @@
     };
   };
 
-  /* 頁首 4 行文字 */
+  /* 頁首 4 行文字 —— 日期一律以民國格式輸出（欄位可能存 ISO 或舊的民國字串） */
   Layout.headerLines = function (project) {
-    const period = U.joinCaption(
-      project.periodStart || project.periodEnd
-        ? '工程期限：' + (project.periodStart || '') + (project.periodEnd ? '~' + project.periodEnd : '')
-        : ''
-    );
+    const s = U.anyToRoc(project.periodStart);
+    const e = U.anyToRoc(project.periodEnd);
+    const period = s || e ? '工程期限：' + s + (e ? '~' + e : '') : '';
     return {
       agency: project.agency || '',
       title: U.joinCaption(project.projectName || '', project.docTitle || ''),

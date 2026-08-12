@@ -40,6 +40,26 @@
     return isNaN(d) ? null : d;
   };
 
+  // 西元 ISO 字串，例：2025-06-30（<input type="date"> 的值格式）
+  U.toIso = function (d) {
+    d = U.asDate(d);
+    if (!d) return '';
+    return d.getFullYear() + '-' + U.pad(d.getMonth() + 1) + '-' + U.pad(d.getDate());
+  };
+
+  // 任意輸入（民國字串／ISO／Date）→ ISO；無法解析回傳空字串
+  U.anyToIso = (v) => U.toIso(U.parseRocInput(v));
+
+  // 任意輸入 → 民國字串 114.06.30；無法解析回傳空字串
+  U.anyToRoc = (v) => U.toRoc(U.parseRocInput(v));
+
+  // 含頭尾的天數，例：06.30 ~ 09.27 為 90 天
+  U.daysInclusive = function (a, b) {
+    const d1 = U.parseRocInput(a), d2 = U.parseRocInput(b);
+    if (!d1 || !d2) return null;
+    return Math.round((d2 - d1) / 86400000) + 1;
+  };
+
   // 民國字串 "114.06.30" / "1140630" → Date；也接受西元 "2025-06-30"
   U.parseRocInput = function (str) {
     if (!str) return null;

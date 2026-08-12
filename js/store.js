@@ -102,7 +102,7 @@
       createdAt: Date.now(),
       updatedAt: Date.now()
     }, seed || {});
-    if (!p.periodStart) p.periodStart = U.toRoc(now);
+    if (!p.periodStart) p.periodStart = U.toIso(now);
     return p;
   };
 

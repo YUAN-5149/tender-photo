@@ -57,6 +57,24 @@ main{padding:14px 12px 96px; max-width:900px; margin:0 auto}
 select.inp{appearance:none; background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);
   background-position:calc(100% - 15px) 51%,calc(100% - 10px) 51%; background-size:5px 5px,5px 5px; background-repeat:no-repeat; padding-right:30px}
 
+/* 日期欄位（原生日曆） */
+input.date{
+  -webkit-appearance:none; appearance:none; min-height:42px;
+  font-variant-numeric:tabular-nums; text-align:left;
+}
+input.date::-webkit-calendar-picker-indicator{opacity:.5; cursor:pointer; padding:2px}
+input.date::-webkit-calendar-picker-indicator:hover{opacity:1}
+input.date::-webkit-date-and-time-value{text-align:left}
+
+/* 民國換算與工期天數 */
+.period-readout{margin:-2px 0 10px; display:flex; gap:9px; align-items:center; flex-wrap:wrap; font-size:13px}
+.period-readout.on{background:#f4f8fb; border:1px solid var(--line); border-radius:9px; padding:8px 11px}
+.period-readout.bad{background:#fdf1ef; border-color:#e8c3bd}
+.pr-hint{color:var(--muted); font-size:12px}
+.pr-roc{font-family:"標楷體",DFKai-SB,BiauKai,serif; font-size:15px; font-weight:700; color:var(--navy)}
+.pr-days{background:var(--navy); color:#fff; border-radius:999px; padding:2px 11px; font-size:12px; font-weight:600; white-space:nowrap}
+.pr-warn{color:var(--danger); font-weight:700}
+
 .check{display:flex; align-items:center; gap:8px; padding:7px 0; font-size:14px; cursor:pointer}
 .check input{width:18px; height:18px; accent-color:var(--navy-2)}
 

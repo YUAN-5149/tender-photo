@@ -90,9 +90,10 @@
     f('f-agency', p.agency);
     f('f-projectName', p.projectName);
     f('f-docTitle', p.docTitle);
-    f('f-periodStart', p.periodStart);
-    f('f-periodEnd', p.periodEnd);
+    f('f-periodStart', U.anyToIso(p.periodStart));
+    f('f-periodEnd', U.anyToIso(p.periodEnd));
     f('f-vendor', p.vendor);
+    renderPeriodReadout();
     U.$('#f-wm-enabled').checked = !!p.watermark.enabled;
     U.$('#f-wm-format').value = p.watermark.dateFormat;
     U.$('#f-wm-label').checked = !!p.watermark.showLabel;
@@ -107,6 +108,29 @@
       '<div class="hp-line">' + U.esc(h.vendor || '施工廠商：') + '</div>';
 
     renderProjectList();
+  }
+
+  /* 日曆選的是西元，公文用的是民國 —— 選完即時換算給使用者確認 */
+  function renderPeriodReadout() {
+    const p = state.project;
+    const box = U.$('#period-readout');
+    const s = U.anyToRoc(p.periodStart);
+    const e = U.anyToRoc(p.periodEnd);
+
+    if (!s && !e) {
+      box.className = 'period-readout';
+      box.innerHTML = '<span class="pr-hint">選擇日期後，這裡會顯示公文用的民國日期</span>';
+      return;
+    }
+
+    const days = U.daysInclusive(p.periodStart, p.periodEnd);
+    const reversed = days !== null && days < 1;
+    box.className = 'period-readout on' + (reversed ? ' bad' : '');
+    box.innerHTML =
+      '<span class="pr-roc">工程期限：' + U.esc(s || '—') + (e ? '~' + U.esc(e) : '') + '</span>' +
+      (reversed
+        ? '<span class="pr-warn">訖日早於起日，請重新選擇</span>'
+        : (days !== null ? '<span class="pr-days">工期 ' + days + ' 天</span>' : ''));
   }
 
   function renderProjectList() {
