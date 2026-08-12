@@ -147,7 +147,8 @@
 
     U.$('#datemode-hint').textContent = fixed
       ? '所有新拍或匯入的照片都會蓋上同一個日期，不受照片本身拍攝時間影響。'
-      : '日期取自照片 EXIF 拍攝時間；無 EXIF 時採檔案時間。從相簿匯入不同天拍的舊照片，日期會各不相同。';
+      : '讀取照片的 EXIF DateTimeOriginal 欄位。從相簿匯入不同天拍的舊照片，日期會各不相同；'
+        + '經通訊軟體轉傳或截圖的照片常已無 EXIF，會改採檔案時間並於匯入後提醒。';
   }
 
   /* 日曆選的是西元，公文用的是民國 —— 選完即時換算給使用者確認 */
@@ -353,7 +354,7 @@
       c.areaId ? areaName(c.areaId) : '', itemName(c.itemId) || '（未選工項）', c.stage
     );
     const fixedDate = effectiveDate(p);
-    U.$('#board-date').textContent = fixedDate ? stampPreview(p, fixedDate) : '日期依各張照片拍攝時間';
+    U.$('#board-date').textContent = fixedDate ? stampPreview(p, fixedDate) : '日期取自各張照片的 EXIF 拍攝時間';
     U.$('#board-date').classList.toggle('auto', !fixedDate);
 
     chips('#chips-area', p.areas.map((a) => ({ id: a.id, name: a.name || '（未命名）' })), c.areaId, (id) => {
@@ -374,7 +375,7 @@
 
     const mode = p.watermark.dateMode || 'exif';
     chips('#chips-datemode', [
-      { id: 'exif', name: '各張拍攝日' },
+      { id: 'exif', name: 'EXIF 拍攝時間' },
       { id: 'fixed', name: '指定日期' }
     ], mode, (id) => {
       const wm = p.watermark;
@@ -477,6 +478,7 @@
     const p = state.project;
     busy.show('處理照片 0/' + arr.length);
     let seq = state.photos.reduce((m, x) => Math.max(m, x.seq || 0), 0);
+    let noExif = 0;
     const label = U.joinCaption(shot.areaId ? areaName(shot.areaId) : '', itemName(shot.itemId), shot.stage);
 
     return arr.reduce((chain, file, i) => chain.then(() => {
@@ -489,15 +491,21 @@
           id: U.uid('ph'), projectId: p.id,
           blob: out.blob, thumb: out.thumb, w: out.w, h: out.h, size: out.size,
           areaId: shot.areaId || '', itemId: shot.itemId || '', stage: shot.stage || '',
-          note: '', takenAt: out.takenAt, seq: ++seq, createdAt: Date.now()
+          note: '', takenAt: out.takenAt, dateSource: out.dateSource,
+          seq: ++seq, createdAt: Date.now()
         };
+        if (out.dateSource !== 'exif' && out.dateSource !== 'fixed') noExif++;
         return Store.savePhoto(rec).then(() => { state.photos.push(rec); });
       }).catch((e) => {
         console.error(e); toast('照片處理失敗：' + file.name, 'err');
       }).then(() => busy.progress(i + 1, arr.length, '處理照片 ' + (i + 1) + '/' + arr.length));
     }), Promise.resolve()).then(() => {
       busy.hide();
-      toast('已加入 ' + arr.length + ' 張照片');
+      if (noExif) {
+        toast(noExif + ' 張照片沒有 EXIF 拍攝時間，已改用檔案時間，請確認日期', 'err');
+      } else {
+        toast('已加入 ' + arr.length + ' 張照片');
+      }
       render();
     });
   }
@@ -511,7 +519,12 @@
     const p = state.project;
 
     U.$('#ed-img').src = URL.createObjectURL(ph.blob);
-    U.$('#ed-meta').textContent = ph.w + '×' + ph.h + ' · ' + U.bytes(ph.size) + ' · 拍攝 ' + U.toRoc(ph.takenAt || ph.createdAt);
+    const SRC = { exif: 'EXIF 拍攝時間', fixed: '指定日期', file: '檔案時間（無 EXIF）', now: '匯入時間（無 EXIF）' };
+    const src = SRC[ph.dateSource] || '拍攝時間';
+    U.$('#ed-meta').innerHTML = U.esc(ph.w + '×' + ph.h + ' · ' + U.bytes(ph.size)) +
+      '<br><b>' + U.esc(U.toRoc(ph.takenAt || ph.createdAt)) + '</b>　' +
+      '<span class="' + (ph.dateSource === 'file' || ph.dateSource === 'now' ? 'src-warn' : 'src-ok') + '">' +
+      U.esc(src) + '</span>';
 
     const selArea = U.$('#ed-area');
     selArea.innerHTML = '<option value="">（未指定區域）</option>';

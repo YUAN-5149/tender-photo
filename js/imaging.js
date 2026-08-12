@@ -82,9 +82,16 @@
     const maxEdge = opts.maxEdge || 1600;
     const quality = opts.quality || 0.82;
 
-    return Promise.all([Img.load(file), opts.date ? Promise.resolve(opts.date) : Img.readExifDate(file)])
+    const fixed = opts.date || null;   // 有指定日期就不必讀 EXIF
+
+    return Promise.all([Img.load(file), fixed ? Promise.resolve(null) : Img.readExifDate(file)])
       .then(([src, exifDate]) => {
-        const takenAt = exifDate || (file.lastModified ? new Date(file.lastModified) : new Date());
+        // 記錄日期來源，讓使用者能驗證每張照片的日期是怎麼來的
+        let takenAt, dateSource;
+        if (fixed) { takenAt = fixed; dateSource = 'fixed'; }
+        else if (exifDate) { takenAt = exifDate; dateSource = 'exif'; }
+        else if (file.lastModified) { takenAt = new Date(file.lastModified); dateSource = 'file'; }
+        else { takenAt = new Date(); dateSource = 'now'; }
         const sw = src.width, sh = src.height;
         const scale = Math.min(1, maxEdge / Math.max(sw, sh));
         const w = Math.max(1, Math.round(sw * scale));
@@ -114,7 +121,7 @@
             res({
               blob: blob,
               thumb: thumbCv.toDataURL('image/jpeg', 0.7),
-              w: w, h: h, size: blob.size, takenAt: takenAt.getTime()
+              w: w, h: h, size: blob.size, takenAt: takenAt.getTime(), dateSource: dateSource
             });
           }, 'image/jpeg', quality);
         });
