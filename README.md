@@ -71,6 +71,9 @@ ZIP 資料夾結構可選 `工項/階段`、`區域/工項/階段` 或不分資�
 - **持久化儲存**：載入時向瀏覽器申請 `storage.persist()`，避免空間吃緊時 IndexedDB 內的照片被自動清除；
   「專案清單」下方會顯示已用容量與是否取得持久保存。
 - **離線指示**：斷線時頂列出現「離線中」標記，拍照與歸檔照常運作。
+- **安裝對話框大圖版面**：manifest 附 5 張 `screenshots`（3 張直式 780×1560 ＋ 2 張橫式 1280×800），
+  Android Chrome 會改用較豐富的安裝畫面。截圖不放進 Service Worker 快取——只有安裝對話框會用到，
+  沒必要為此多佔約 1 MB 離線空間。
 - **弱網保護**：Service Worker 仍是 network-first，但網路 3.5 秒沒回應就先用快取回應
   （工地常見「有訊號但極慢」比完全沒訊號更難用）；新版本仍會在背景取回並寫入快取。
 
@@ -112,6 +115,14 @@ git add -A && git commit -m "說明" && git push
 Service Worker 採 network-first，使用者重新整理即取得新版，不需清快取。
 改動 `sw.js` 內 `ASSETS` 清單時記得同步調高 `CACHE` 版本號（目前 `tender-photo-v3`）。
 
+介面大改後，安裝對話框的截圖要重拍（先開好 `python -m http.server 8931`）：
+
+```bash
+node tools/make-screenshots.mjs "C:\Program Files (x86)\Google\Chrome\Application\chrome.exe" http://localhost:8931 screenshots
+```
+
+腳本會在暫存 profile 裡塞示範資料再截圖，不會動到你瀏覽器裡的實際專案。
+
 ---
 
 ## 檔案結構
@@ -130,9 +141,12 @@ tender-photo/
 │   ├── export-print.js   A4 預覽與列印 PDF
 │   ├── export-zip.js     ZIP 打包與 CSV 清單
 │   └── app.js            畫面與流程控制
+├── tools/
+│   └── make-screenshots.mjs  重新產生 manifest screenshots（CDP，無需安裝套件）
 ├── vendor/               docx 9.7.1、JSZip 3.10.1（本機打包）
 ├── icons/                PWA 圖示（any／maskable／apple-touch-icon）
-├── manifest.json         含 id、display_override、shortcuts
+├── screenshots/          安裝對話框用截圖（直式 ×3、橫式 ×2）
+├── manifest.json         含 id、display_override、shortcuts、screenshots
 └── sw.js                 Service Worker（network-first ＋ 弱網逾時回退快取）
 ```
 
@@ -157,5 +171,5 @@ tender-photo/
 - 頁尾頁碼、簽核欄位
 - 照片旋轉／裁切工具
 - 匯出設定檔，於多台裝置間同步工項清單
-- manifest 加 `screenshots`（Android 安裝對話框會改用較豐富的版面）
 - 深色模式（現場多在戶外強光下，暫以淺色為主）
+- 截圖目前是以示範資料重拍的；介面大改後需重新產生（見下）

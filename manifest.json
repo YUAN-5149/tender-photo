@@ -19,6 +19,43 @@
     { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
     { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
+  "screenshots": [
+    {
+      "src": "screenshots/shot-shoot.png",
+      "sizes": "780x1560",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "現場拍照：點選區域、工項、階段後拍攝，照片自動歸檔"
+    },
+    {
+      "src": "screenshots/shot-export.png",
+      "sizes": "780x1560",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "版面預覽：與 Word 範本一致的 A4 施工照版面"
+    },
+    {
+      "src": "screenshots/shot-project.png",
+      "sizes": "780x1560",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "專案設定：四行頁首即時預覽，自動換算民國日期與工期天數"
+    },
+    {
+      "src": "screenshots/shot-wide-shoot.png",
+      "sizes": "1280x800",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "桌機版現場拍照與相簿"
+    },
+    {
+      "src": "screenshots/shot-wide-export.png",
+      "sizes": "1280x800",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "桌機版預覽與匯出 Word／PDF／ZIP"
+    }
+  ],
   "shortcuts": [
     {
       "name": "現場拍照",
