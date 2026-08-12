@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f2d4a">
+<title>標案施工現場照系統</title>
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">工</span>
+    <div>
+      <div class="brand-title">標案施工現場照系統</div>
+      <div class="brand-sub">現場拍照 · 分區歸檔 · 一鍵成冊</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <span class="pill">照片 <b id="badge-count">0</b></span>
+  </div>
+</header>
+
+<main>
+
+<!-- ============ 1. 專案設定 ============ -->
+<section class="view" id="view-project">
+  <h2 class="vh">專案設定<small>這四行會成為 Word 每頁的頁首</small></h2>
+
+  <div class="card">
+    <div class="field">
+      <label for="f-agency">機關／學校名稱</label>
+      <input class="inp" id="f-agency" placeholder="例：臺北市立龍山國民中學">
+    </div>
+    <div class="field">
+      <label for="f-projectName">工程名稱</label>
+      <input class="inp" id="f-projectName" placeholder="例：114年電源改善工程-教室線路更新第二期">
+    </div>
+    <div class="field">
+      <label for="f-docTitle">文件標題</label>
+      <input class="inp" id="f-docTitle" placeholder="施工照">
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="f-periodStart">工程期限（起）</label>
+        <input class="inp" id="f-periodStart" placeholder="114.06.30">
+      </div>
+      <div class="field">
+        <label for="f-periodEnd">工程期限（訖）</label>
+        <input class="inp" id="f-periodEnd" placeholder="114.09.27">
+      </div>
+    </div>
+    <div class="field">
+      <label for="f-vendor">施工廠商</label>
+      <input class="inp" id="f-vendor" placeholder="例：億來科技股份有限公司">
+    </div>
+
+    <div class="head-preview-wrap">
+      <div class="mini-label">頁首預覽</div>
+      <div id="head-preview" class="head-preview"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>拍照參數</h3>
+    <label class="check"><input type="checkbox" id="f-wm-enabled"> 照片加上日期浮水印</label>
+    <div class="field-row">
+      <div class="field">
+        <label for="f-wm-format">日期格式</label>
+        <select class="inp" id="f-wm-format">
+          <option value="AD">西元（2025.08.28）</option>
+          <option value="ROC">民國（114.08.28）</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="f-maxEdge">照片解析度</label>
+        <select class="inp" id="f-maxEdge">
+          <option value="1200">1200px（檔案最小）</option>
+          <option value="1600">1600px（建議）</option>
+          <option value="2000">2000px（較清晰）</option>
+          <option value="2600">2600px（原始品質）</option>
+        </select>
+      </div>
+    </div>
+    <label class="check"><input type="checkbox" id="f-wm-label"> 左下角加註工項文字</label>
+    <p class="hint">日期取自照片 EXIF 拍攝時間；無 EXIF 時採檔案時間。</p>
+  </div>
+
+  <div class="card">
+    <h3>專案清單</h3>
+    <div id="project-list" class="prj-list"></div>
+    <button class="btn primary block" id="btn-new-project">＋ 建立新專案</button>
+    <p class="hint" id="storage">資料全部保存在本機瀏覽器，不會上傳。</p>
+  </div>
+</section>
+
+<!-- ============ 2. 工項與區域 ============ -->
+<section class="view" id="view-setup">
+  <h2 class="vh">工項與位置區域<small>先建清單，現場只要點選就好</small></h2>
+
+  <div class="card">
+    <h3>位置區域</h3>
+    <div id="area-list"></div>
+    <div class="btn-row">
+      <button class="btn" id="btn-add-area">＋ 新增一列</button>
+      <button class="btn ghost" id="btn-bulk-area">批次貼上</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>工項</h3>
+    <div id="item-list"></div>
+    <div class="btn-row">
+      <button class="btn" id="btn-add-item">＋ 新增一列</button>
+      <button class="btn ghost" id="btn-bulk-item">批次貼上</button>
+    </div>
+    <p class="hint">「階段」決定該工項在 Word 中的三列標題（施工前／中／後）。選「不分階段」則照片依序排滿版面。</p>
+  </div>
+
+  <div class="card">
+    <h3>工項範本</h3>
+    <div id="preset-list" class="preset-list"></div>
+  </div>
+</section>
+
+<!-- ============ 3. 拍照 ============ -->
+<section class="view on" id="view-shoot">
+  <div class="board">
+    <div class="board-agency" id="board-agency"></div>
+    <div class="board-caption" id="board-caption"></div>
+    <div class="board-date" id="board-date"></div>
+  </div>
+
+  <div class="card tight">
+    <div class="picker">
+      <div class="picker-label">位置區域</div>
+      <div class="chips" id="chips-area"></div>
+    </div>
+    <div class="picker">
+      <div class="picker-label">工項</div>
+      <div class="chips" id="chips-item"></div>
+    </div>
+    <div class="picker">
+      <div class="picker-label">階段</div>
+      <div class="chips" id="chips-stage"></div>
+    </div>
+  </div>
+
+  <div class="shoot-actions">
+    <label class="btn primary big" for="file-camera">📷 現場拍照</label>
+    <input type="file" id="file-camera" accept="image/*" capture="environment" multiple hidden>
+    <label class="btn big" for="file-album">🖼️ 從相簿匯入</label>
+    <input type="file" id="file-album" accept="image/*" multiple hidden>
+  </div>
+
+  <div class="card tight">
+    <div class="gal-head">
+      <select class="inp slim" id="gal-filter">
+        <option value="current">符合目前選取</option>
+        <option value="all">全部照片</option>
+        <option value="unassigned">未分類</option>
+      </select>
+      <span class="gal-count" id="gal-count">0 張</span>
+    </div>
+    <div id="gallery" class="gallery"></div>
+  </div>
+</section>
+
+<!-- ============ 4. 預覽與匯出 ============ -->
+<section class="view" id="view-export">
+  <h2 class="vh">預覽與匯出<small>Word／PDF／ZIP</small></h2>
+
+  <div class="card">
+    <div id="stat" class="stat"></div>
+    <div id="warn-unassigned" class="warn-box"></div>
+
+    <div class="field">
+      <label for="f-layoutMode">版面配置</label>
+      <select class="inp" id="f-layoutMode">
+        <option value="item">依工項分頁（每頁一工項，三列＝前／中／後）</option>
+        <option value="area">依區域→工項分頁</option>
+        <option value="flow">依序流水（每格自帶標題）</option>
+      </select>
+    </div>
+    <label class="check"><input type="checkbox" id="f-captionWithArea"> 標題含位置區域</label>
+    <label class="check"><input type="checkbox" id="f-includeEmpty"> 保留無照片的空白版面（預留貼照片）</label>
+  </div>
+
+  <div class="card">
+    <h3>下載</h3>
+    <button class="btn primary block" id="btn-word">⬇ 下載 Word（.docx）</button>
+    <button class="btn block" id="btn-pdf">⬇ 匯出 PDF（列印 → 另存為 PDF）</button>
+    <div class="field">
+      <label for="f-zipStructure">ZIP 資料夾結構</label>
+      <select class="inp" id="f-zipStructure">
+        <option value="item">工項／階段</option>
+        <option value="area">區域／工項／階段</option>
+        <option value="flat">不分資料夾</option>
+      </select>
+    </div>
+    <label class="check"><input type="checkbox" id="f-zipWithDocx" checked> ZIP 內含 Word 檔</label>
+    <button class="btn block" id="btn-zip">⬇ 下載 ZIP（原始照片＋清單 CSV）</button>
+    <p class="hint">PDF 由瀏覽器列印功能產生：目的地請選「另存為 PDF」，邊界選「無」，並勾選「背景圖形」。</p>
+  </div>
+
+  <div class="card">
+    <h3>版面預覽</h3>
+    <button class="btn block" id="btn-preview">產生預覽</button>
+    <div id="preview" class="preview"></div>
+  </div>
+</section>
+
+</main>
+
+<nav class="nav">
+  <button class="nav-btn" data-view="project"><span>📋</span>專案</button>
+  <button class="nav-btn" data-view="setup"><span>🧱</span>工項</button>
+  <button class="nav-btn on" data-view="shoot"><span>📷</span>拍照</button>
+  <button class="nav-btn" data-view="export"><span>📄</span>匯出</button>
+</nav>
+
+<!-- 單張照片編輯 -->
+<div class="sheet" id="editor">
+  <div class="sheet-inner">
+    <div class="sheet-head">
+      <strong>照片資訊</strong>
+      <button class="btn tiny" id="ed-close">關閉</button>
+    </div>
+    <img id="ed-img" class="ed-img" alt="">
+    <div class="ed-meta" id="ed-meta"></div>
+    <div class="field">
+      <label for="ed-area">位置區域</label>
+      <select class="inp" id="ed-area"></select>
+    </div>
+    <div class="field">
+      <label for="ed-item">工項</label>
+      <select class="inp" id="ed-item"></select>
+    </div>
+    <div class="field">
+      <label for="ed-stage">階段</label>
+      <select class="inp" id="ed-stage"></select>
+    </div>
+    <div class="field">
+      <label for="ed-note">備註（會加在標題後）</label>
+      <input class="inp" id="ed-note" placeholder="例：3F 走廊東側">
+    </div>
+    <div class="btn-row">
+      <button class="btn primary" id="ed-save">儲存</button>
+      <button class="btn danger" id="ed-delete">刪除照片</button>
+    </div>
+  </div>
+</div>
+
+<!-- 批次操作列 -->
+<div class="bulk" id="bulk-bar">
+  已選 <b id="bulk-count">0</b> 張
+  <button class="btn tiny" id="btn-bulk-assign">套用目前選取的工項</button>
+  <button class="btn tiny danger" id="btn-bulk-delete">刪除</button>
+  <button class="btn tiny ghost" id="btn-clear-sel">取消</button>
+</div>
+
+<!-- 忙碌遮罩 -->
+<div class="busy" id="busy">
+  <div class="busy-box">
+    <div class="busy-msg" id="busy-msg">處理中…</div>
+    <div class="busy-track"><div class="busy-bar" id="busy-bar"></div></div>
+  </div>
+</div>
+
+<!-- 列印容器 -->
+<div id="print-root"></div>
+
+<script src="vendor/jszip.min.js"></script>
+<script src="vendor/docx.iife.js"></script>
+<script src="js/util.js"></script>
+<script src="js/store.js"></script>
+<script src="js/presets.js"></script>
+<script src="js/imaging.js"></script>
+<script src="js/layout.js"></script>
+<script src="js/export-docx.js"></script>
+<script src="js/export-print.js"></script>
+<script src="js/export-zip.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
