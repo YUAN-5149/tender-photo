@@ -136,9 +136,27 @@ input.date::-webkit-date-and-time-value{text-align:left}
 .edit-row{display:flex; gap:7px; align-items:center; margin-bottom:8px; flex-wrap:wrap}
 .edit-row .inp{flex:1 1 150px; min-width:0}
 .edit-row .stage-sel{flex:1 1 130px; max-width:190px}
-.row-ops{display:flex; gap:4px; flex:none}
+/* 窄螢幕時 ↑↓刪除 會換到第二行，縮排對齊上一行的輸入框（序號 20 ＋ gap 7） */
+.row-ops{display:flex; gap:4px; flex:none; margin-left:27px}
+
+/* 列數統計，直接看得出建了幾項 */
+.h3-count{margin-left:8px; font-size:12px; font-weight:500; color:var(--muted)}
+
+/* 序號：用 CSS counter 依 DOM 順序自動編，拖曳過程中會即時跟著換 */
+#area-list,#item-list{counter-reset:row}
+.edit-row::before{
+  counter-increment:row; content:counter(row);
+  flex:none; min-width:20px; text-align:right;
+  font-size:12px; font-weight:700; color:var(--muted);
+  font-variant-numeric:tabular-nums;
+}
 
 /* ---- 拖移排序 ---- */
+/* 兩個工具鈕靠左，拖移鈕推到最右邊，跟「新增／貼上」分開 */
+.btn-row.row-tools .btn{flex:0 1 auto}
+.btn-row.row-tools .btn.btn-sort{flex:0 0 auto; margin-left:auto}
+.btn-sort{background:#e3edf7; border-color:#b9d2e8; color:var(--navy)}
+.btn-sort:hover{background:#d3e2f1}
 .drag-handle{display:none}
 .sorting .row-ops{display:none}
 .sorting .edit-row{

@@ -295,6 +295,9 @@
     });
     if (!p.items.length) itemBox.appendChild(U.el('div', { class: 'hint', text: '尚未建立工項，可從下方範本一鍵載入。' }));
 
+    U.$('#area-count').textContent = p.areas.length ? '共 ' + p.areas.length + ' 區' : '';
+    U.$('#item-count').textContent = p.items.length ? '共 ' + p.items.length + ' 項' : '';
+
     renderSortMode('area');
     renderSortMode('item');
 
@@ -348,7 +351,7 @@
     box.classList.toggle('sorting', on);
     btn.classList.toggle('primary', on);
     btn.setAttribute('aria-pressed', String(on));
-    btn.textContent = on ? '🔒 鎖定順序' : '⇅ 拖移排序';
+    btn.textContent = on ? '🔒 鎖定順序' : '⇅ 手動拖移';
   }
 
   function toggleSortMode(kind) {

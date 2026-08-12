@@ -135,22 +135,22 @@
   <h2 class="vh">工項與位置區域<small>先建清單，現場只要點選就好</small></h2>
 
   <div class="card">
-    <h3>位置區域</h3>
+    <h3>位置區域<span class="h3-count" id="area-count"></span></h3>
     <div id="area-list"></div>
-    <div class="btn-row">
+    <div class="btn-row row-tools">
       <button class="btn" id="btn-add-area">＋ 新增一列</button>
       <button class="btn ghost" id="btn-bulk-area">批次貼上</button>
-      <button class="btn" id="btn-sort-area" aria-pressed="false">⇅ 拖移排序</button>
+      <button class="btn btn-sort" id="btn-sort-area" aria-pressed="false">⇅ 手動拖移</button>
     </div>
   </div>
 
   <div class="card">
-    <h3>工項</h3>
+    <h3>工項<span class="h3-count" id="item-count"></span></h3>
     <div id="item-list"></div>
-    <div class="btn-row">
+    <div class="btn-row row-tools">
       <button class="btn" id="btn-add-item">＋ 新增一列</button>
       <button class="btn ghost" id="btn-bulk-item">批次貼上</button>
-      <button class="btn" id="btn-sort-item" aria-pressed="false">⇅ 拖移排序</button>
+      <button class="btn btn-sort" id="btn-sort-item" aria-pressed="false">⇅ 手動拖移</button>
     </div>
     <p class="hint">「階段」決定該工項在 Word 中的三列標題（施工前／中／後）。選「不分階段」則照片依序排滿版面。</p>
   </div>
