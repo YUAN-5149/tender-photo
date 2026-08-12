@@ -75,9 +75,21 @@
 
   <div class="card">
     <h3>拍照參數</h3>
-    <label class="check"><input type="checkbox" id="f-wm-enabled"> 照片加上日期浮水印</label>
+    <div class="field">
+      <label for="f-wm-datemode">照片日期浮水印</label>
+      <select class="inp" id="f-wm-datemode">
+        <option value="exif">EXIF 拍攝時間：依每張照片實際拍攝的日期</option>
+        <option value="fixed">指定日期：全部蓋上同一天</option>
+        <option value="none">不需日期：純圖片，不在照片上蓋任何文字</option>
+      </select>
+    </div>
+    <div class="field" id="fixed-date-field">
+      <label for="f-wm-fixeddate">指定日期</label>
+      <input class="inp date" type="date" id="f-wm-fixeddate">
+      <div class="period-readout on" id="fixed-date-readout"></div>
+    </div>
     <div class="field-row">
-      <div class="field">
+      <div class="field" id="wm-format-field">
         <label for="f-wm-format">日期格式</label>
         <select class="inp" id="f-wm-format">
           <option value="AD">西元（2025.08.28）</option>
@@ -94,20 +106,8 @@
         </select>
       </div>
     </div>
-    <div class="field">
-      <label for="f-wm-datemode">照片日期來源</label>
-      <select class="inp" id="f-wm-datemode">
-        <option value="exif">EXIF 拍攝時間：依每張照片實際拍攝的日期</option>
-        <option value="fixed">指定日期：全部蓋上同一天</option>
-      </select>
-    </div>
-    <div class="field" id="fixed-date-field">
-      <label for="f-wm-fixeddate">指定日期</label>
-      <input class="inp date" type="date" id="f-wm-fixeddate">
-      <div class="period-readout on" id="fixed-date-readout"></div>
-    </div>
-    <label class="check"><input type="checkbox" id="f-wm-label"> 左下角加註工項文字（不建議）</label>
-    <p class="hint">此文字在匯入當下就燒進圖片，事後在相簿改工項或階段不會跟著改，會與 Word 標題列不一致。Word 標題列已載明工項與階段，故預設關閉。</p>
+    <label class="check" id="wm-label-field"><input type="checkbox" id="f-wm-label"> 左下角加註工項文字（不建議）</label>
+    <p class="hint" id="wm-label-hint">此文字在匯入當下就燒進圖片，事後在相簿改工項或階段不會跟著改，會與 Word 標題列不一致。Word 標題列已載明工項與階段，故預設關閉。</p>
     <p class="hint" id="datemode-hint"></p>
   </div>
 

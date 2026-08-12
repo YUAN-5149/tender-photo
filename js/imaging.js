@@ -75,7 +75,7 @@
   }
 
   /* ---- 主流程：壓縮＋浮水印 ----
-     opts = { maxEdge, quality, watermark:{enabled,dateFormat,showLabel},
+     opts = { maxEdge, quality, watermark:{dateMode,dateFormat,showLabel},
               label, date }                                              */
   Img.process = function (file, opts) {
     opts = opts || {};
@@ -103,8 +103,11 @@
         ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(src, 0, 0, w, h);
 
+        // dateMode 'none'：純圖片，日期與工項都不燒上去（takenAt 仍照常記錄，
+        // ZIP 檔名與 CSV 還是要用）
         const wm = opts.watermark || {};
-        if (wm.enabled !== false) {
+        const stamped = wm.dateMode !== 'none';
+        if (stamped) {
           const dateText = wm.dateFormat === 'ROC' ? U.toRoc(takenAt) : U.toAd(takenAt);
           stamp(ctx, w, h, dateText, 'br');
           if (wm.showLabel && opts.label) stamp(ctx, w, h, opts.label, 'bl');
@@ -121,7 +124,8 @@
             res({
               blob: blob,
               thumb: thumbCv.toDataURL('image/jpeg', 0.7),
-              w: w, h: h, size: blob.size, takenAt: takenAt.getTime(), dateSource: dateSource
+              w: w, h: h, size: blob.size, takenAt: takenAt.getTime(), dateSource: dateSource,
+              stamped: stamped
             });
           }, 'image/jpeg', quality);
         });

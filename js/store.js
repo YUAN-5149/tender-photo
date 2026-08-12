@@ -75,12 +75,14 @@
   };
 
   /* ---- 結構版本：既有專案開啟時自動補齊 ---- */
-  Store.SCHEMA = 2;
+  Store.SCHEMA = 3;
 
   /**
    * 回傳 true 表示有調整、需要存回。
    * v2：左下角加註工項改為預設關閉 —— 該文字是匯入當下燒進圖片的，
    *     事後在相簿改工項或階段時不會跟著改，會與 Word 標題列不一致。
+   * v3：浮水印開關併入 dateMode（新增 'none'）—— 原本 enabled 與 dateMode
+   *     可以互相矛盾（關掉浮水印卻仍顯示「EXIF 拍攝時間」），改為單一來源。
    */
   Store.migrate = function (p) {
     if (!p) return false;
@@ -92,6 +94,12 @@
       p.watermark.showLabel = false;
       if (p.watermark.dateMode === undefined) p.watermark.dateMode = 'exif';
       if (p.watermark.fixedDate === undefined) p.watermark.fixedDate = '';
+    }
+    if (from < 3) {
+      p.watermark = p.watermark || {};
+      // 原本關掉浮水印的專案，等同新的「不加日期」
+      if (p.watermark.enabled === false) p.watermark.dateMode = 'none';
+      delete p.watermark.enabled;
     }
     p.schemaVersion = Store.SCHEMA;
     return true;
@@ -115,9 +123,10 @@
       includeEmpty: false,        // 是否保留無照片的空白版面
       zipStructure: 'item',       // ZIP 資料夾結構
       watermark: {
-        enabled: true,
         dateFormat: 'AD',         // AD 西元 / ROC 民國
-        dateMode: 'exif',         // exif = 各張照片的拍攝日期；fixed = 全部用指定日期
+        // exif = 各張照片的拍攝日期；fixed = 全部用指定日期；
+        // none = 不加日期，照片上不燒任何文字（仍會依 EXIF 轉正並縮圖）
+        dateMode: 'exif',
         fixedDate: '',            // dateMode 為 fixed 時使用（ISO）
         // 左下角加註工項：文字是匯入當下燒進圖片的，事後改分類不會跟著改，
         // 會與 Word 標題列不一致；Word 已載明工項與階段，故預設關閉。

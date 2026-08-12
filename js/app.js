@@ -99,7 +99,6 @@
     f('f-periodEnd', U.anyToIso(p.periodEnd));
     f('f-vendor', p.vendor);
     renderPeriodReadout();
-    U.$('#f-wm-enabled').checked = !!p.watermark.enabled;
     U.$('#f-wm-format').value = p.watermark.dateFormat;
     U.$('#f-wm-label').checked = !!p.watermark.showLabel;
     U.$('#f-maxEdge').value = String(p.maxEdge);
@@ -120,7 +119,8 @@
 
   /* 照片浮水印的日期來源 ------------------------------------------------
      exif  = 每張照片各自的拍攝日期（相簿舊照片會各不相同）
-     fixed = 全部蓋同一個指定日期                                        */
+     fixed = 全部蓋同一個指定日期
+     none  = 不蓋日期，照片保持原樣（takenAt 仍照常記錄，ZIP 檔名與 CSV 要用） */
   function effectiveDate(project) {
     const wm = project.watermark;
     if (wm.dateMode === 'fixed') {
@@ -137,8 +137,15 @@
 
   function renderDateMode() {
     const p = state.project;
-    const fixed = p.watermark.dateMode === 'fixed';
+    const mode = p.watermark.dateMode || 'exif';
+    const fixed = mode === 'fixed';
+    const none = mode === 'none';
     U.$('#fixed-date-field').style.display = fixed ? '' : 'none';
+
+    // 不蓋任何字時，日期格式與左下角加註都失去意義，一併收起來免得誤會
+    U.$('#wm-format-field').style.display = none ? 'none' : '';
+    U.$('#wm-label-field').hidden = none;
+    U.$('#wm-label-hint').hidden = none;
 
     const d = effectiveDate(p);
     U.$('#fixed-date-readout').innerHTML = fixed
@@ -147,10 +154,13 @@
       : '';
     U.$('#fixed-date-readout').className = 'period-readout' + (fixed ? ' on' : '') + (fixed && !d ? ' bad' : '');
 
-    U.$('#datemode-hint').textContent = fixed
-      ? '所有新拍或匯入的照片都會蓋上同一個日期，不受照片本身拍攝時間影響。'
-      : '讀取照片的 EXIF DateTimeOriginal 欄位。從相簿匯入不同天拍的舊照片，日期會各不相同；'
-        + '經通訊軟體轉傳或截圖的照片常已無 EXIF，會改採檔案時間並於匯入後提醒。';
+    U.$('#datemode-hint').textContent = none
+      ? '照片維持原本畫面，右下角日期與左下角工項都不會加上去。仍會依 EXIF 方向轉正並縮到上方設定的解析度；'
+        + '拍攝日期照常記錄，ZIP 檔名與照片清單 CSV 仍看得到。'
+      : fixed
+        ? '所有新拍或匯入的照片都會蓋上同一個日期，不受照片本身拍攝時間影響。'
+        : '讀取照片的 EXIF DateTimeOriginal 欄位。從相簿匯入不同天拍的舊照片，日期會各不相同；'
+          + '經通訊軟體轉傳或截圖的照片常已無 EXIF，會改採檔案時間並於匯入後提醒。';
   }
 
   /* 日曆選的是西元，公文用的是民國 —— 選完即時換算給使用者確認 */
@@ -220,7 +230,6 @@
         renderProject();
       });
     });
-    U.$('#f-wm-enabled').addEventListener('change', (e) => { state.project.watermark.enabled = e.target.checked; debouncedSave(); });
     U.$('#f-wm-format').addEventListener('change', (e) => { state.project.watermark.dateFormat = e.target.value; debouncedSave(); });
     U.$('#f-wm-label').addEventListener('change', (e) => { state.project.watermark.showLabel = e.target.checked; debouncedSave(); });
     U.$('#f-wm-datemode').addEventListener('change', (e) => {
@@ -355,9 +364,12 @@
     U.$('#board-caption').textContent = U.joinCaption(
       c.areaId ? areaName(c.areaId) : '', itemName(c.itemId) || '（未選工項）', c.stage
     );
+    const mode = p.watermark.dateMode || 'exif';
     const fixedDate = effectiveDate(p);
-    U.$('#board-date').textContent = fixedDate ? stampPreview(p, fixedDate) : '日期取自各張照片的 EXIF 拍攝時間';
-    U.$('#board-date').classList.toggle('auto', !fixedDate);
+    U.$('#board-date').textContent = mode === 'none'
+      ? '不加日期浮水印，照片維持原本畫面'
+      : (fixedDate ? stampPreview(p, fixedDate) : '日期取自各張照片的 EXIF 拍攝時間');
+    U.$('#board-date').classList.toggle('auto', !fixedDate || mode === 'none');
 
     chips('#chips-area', p.areas.map((a) => ({ id: a.id, name: a.name || '（未命名）' })), c.areaId, (id) => {
       c.areaId = c.areaId === id ? '' : id; renderShoot();
@@ -375,10 +387,10 @@
       c.stage = id; renderShoot();
     }, '');
 
-    const mode = p.watermark.dateMode || 'exif';
     chips('#chips-datemode', [
       { id: 'exif', name: 'EXIF 拍攝時間' },
-      { id: 'fixed', name: '指定日期' }
+      { id: 'fixed', name: '指定日期' },
+      { id: 'none', name: '不需日期' }
     ], mode, (id) => {
       const wm = p.watermark;
       wm.dateMode = id;
@@ -465,12 +477,14 @@
   function importFiles(files) {
     const arr = Array.prototype.slice.call(files || []).filter((f) => /^image\//.test(f.type));
     if (!arr.length) return importQueue;
-    // 按下快門當下的歸類與日期設定，之後切換 chips 不影響這批照片
+    // 按下快門當下的歸類與浮水印設定，之後切換 chips 不影響這批照片
+    // （浮水印整組快照：否則處理到一半改成「不需日期」，同一批會有的蓋有的沒蓋）
     const shot = {
       areaId: state.capture.areaId,
       itemId: state.capture.itemId,
       stage: state.capture.stage,
-      date: effectiveDate(state.project)   // null = 沿用各張拍攝日期
+      date: effectiveDate(state.project),  // null = 沿用各張拍攝日期
+      watermark: Object.assign({}, state.project.watermark)
     };
     importQueue = importQueue.then(() => runImport(arr, shot));
     return importQueue;
@@ -486,14 +500,14 @@
     return arr.reduce((chain, file, i) => chain.then(() => {
       return Img.process(file, {
         maxEdge: p.maxEdge, quality: p.quality,
-        watermark: p.watermark, label: label,
+        watermark: shot.watermark, label: label,
         date: shot.date || undefined
       }).then((out) => {
         const rec = {
           id: U.uid('ph'), projectId: p.id,
           blob: out.blob, thumb: out.thumb, w: out.w, h: out.h, size: out.size,
           areaId: shot.areaId || '', itemId: shot.itemId || '', stage: shot.stage || '',
-          note: '', takenAt: out.takenAt, dateSource: out.dateSource,
+          note: '', takenAt: out.takenAt, dateSource: out.dateSource, stamped: out.stamped,
           seq: ++seq, createdAt: Date.now()
         };
         if (out.dateSource !== 'exif' && out.dateSource !== 'fixed') noExif++;
@@ -503,10 +517,13 @@
       }).then(() => busy.progress(i + 1, arr.length, '處理照片 ' + (i + 1) + '/' + arr.length));
     }), Promise.resolve()).then(() => {
       busy.hide();
-      if (noExif) {
-        toast(noExif + ' 張照片沒有 EXIF 拍攝時間，已改用檔案時間，請確認日期', 'err');
-      } else {
+      if (!noExif) {
         toast('已加入 ' + arr.length + ' 張照片');
+      } else if (shot.watermark.dateMode === 'none') {
+        // 沒蓋在照片上，日期只影響 ZIP 檔名與 CSV，不必用錯誤色提醒
+        toast(noExif + ' 張沒有 EXIF 拍攝時間，ZIP 檔名與清單會用檔案時間');
+      } else {
+        toast(noExif + ' 張照片沒有 EXIF 拍攝時間，已改用檔案時間，請確認日期', 'err');
       }
       render();
     });
@@ -523,10 +540,12 @@
     U.$('#ed-img').src = URL.createObjectURL(ph.blob);
     const SRC = { exif: 'EXIF 拍攝時間', fixed: '指定日期', file: '檔案時間（無 EXIF）', now: '匯入時間（無 EXIF）' };
     const src = SRC[ph.dateSource] || '拍攝時間';
+    // stamped 為 undefined 代表舊照片（當時一律有蓋），只在明確為 false 時標示
+    const noStamp = ph.stamped === false ? '　<span class="src-plain">未加浮水印</span>' : '';
     U.$('#ed-meta').innerHTML = U.esc(ph.w + '×' + ph.h + ' · ' + U.bytes(ph.size)) +
       '<br><b>' + U.esc(U.toRoc(ph.takenAt || ph.createdAt)) + '</b>　' +
       '<span class="' + (ph.dateSource === 'file' || ph.dateSource === 'now' ? 'src-warn' : 'src-ok') + '">' +
-      U.esc(src) + '</span>';
+      U.esc(src) + '</span>' + noStamp;
 
     const selArea = U.$('#ed-area');
     selArea.innerHTML = '<option value="">（未指定區域）</option>';
