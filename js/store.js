@@ -94,6 +94,8 @@
       watermark: {
         enabled: true,
         dateFormat: 'AD',         // AD 西元 / ROC 民國
+        dateMode: 'exif',         // exif = 各張照片的拍攝日期；fixed = 全部用指定日期
+        fixedDate: '',            // dateMode 為 fixed 時使用（ISO）
         showLabel: true,          // 右下角日期外，左下角加註工項
         position: 'br'
       },

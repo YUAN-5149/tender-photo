@@ -98,6 +98,9 @@
     U.$('#f-wm-format').value = p.watermark.dateFormat;
     U.$('#f-wm-label').checked = !!p.watermark.showLabel;
     U.$('#f-maxEdge').value = String(p.maxEdge);
+    U.$('#f-wm-datemode').value = p.watermark.dateMode || 'exif';
+    f('f-wm-fixeddate', U.anyToIso(p.watermark.fixedDate));
+    renderDateMode();
 
     // 頁首即時預覽
     const h = Layout.headerLines(p);
@@ -108,6 +111,40 @@
       '<div class="hp-line">' + U.esc(h.vendor || '施工廠商：') + '</div>';
 
     renderProjectList();
+  }
+
+  /* 照片浮水印的日期來源 ------------------------------------------------
+     exif  = 每張照片各自的拍攝日期（相簿舊照片會各不相同）
+     fixed = 全部蓋同一個指定日期                                        */
+  function effectiveDate(project) {
+    const wm = project.watermark;
+    if (wm.dateMode === 'fixed') {
+      const d = U.parseRocInput(wm.fixedDate);
+      if (d) return d;
+    }
+    return null;                     // null 代表沿用各張照片的拍攝日期
+  }
+
+  function stampPreview(project, d) {
+    const fmt = project.watermark.dateFormat === 'ROC' ? U.toRoc : U.toAd;
+    return fmt(d);
+  }
+
+  function renderDateMode() {
+    const p = state.project;
+    const fixed = p.watermark.dateMode === 'fixed';
+    U.$('#fixed-date-field').style.display = fixed ? '' : 'none';
+
+    const d = effectiveDate(p);
+    U.$('#fixed-date-readout').innerHTML = fixed
+      ? (d ? '<span class="pr-roc">照片將蓋上 ' + U.esc(stampPreview(p, d)) + '</span>'
+           : '<span class="pr-warn">尚未選擇日期，將暫時沿用各張拍攝日期</span>')
+      : '';
+    U.$('#fixed-date-readout').className = 'period-readout' + (fixed ? ' on' : '') + (fixed && !d ? ' bad' : '');
+
+    U.$('#datemode-hint').textContent = fixed
+      ? '所有新拍或匯入的照片都會蓋上同一個日期，不受照片本身拍攝時間影響。'
+      : '日期取自照片 EXIF 拍攝時間；無 EXIF 時採檔案時間。從相簿匯入不同天拍的舊照片，日期會各不相同。';
   }
 
   /* 日曆選的是西元，公文用的是民國 —— 選完即時換算給使用者確認 */
@@ -180,6 +217,17 @@
     U.$('#f-wm-enabled').addEventListener('change', (e) => { state.project.watermark.enabled = e.target.checked; debouncedSave(); });
     U.$('#f-wm-format').addEventListener('change', (e) => { state.project.watermark.dateFormat = e.target.value; debouncedSave(); });
     U.$('#f-wm-label').addEventListener('change', (e) => { state.project.watermark.showLabel = e.target.checked; debouncedSave(); });
+    U.$('#f-wm-datemode').addEventListener('change', (e) => {
+      const wm = state.project.watermark;
+      wm.dateMode = e.target.value;
+      if (wm.dateMode === 'fixed' && !wm.fixedDate) wm.fixedDate = U.toIso(new Date());
+      save().then(renderProject);
+    });
+    U.$('#f-wm-fixeddate').addEventListener('input', (e) => {
+      state.project.watermark.fixedDate = e.target.value;
+      debouncedSave();
+      renderDateMode();
+    });
     U.$('#f-maxEdge').addEventListener('change', (e) => { state.project.maxEdge = +e.target.value; debouncedSave(); });
     U.$('#btn-new-project').addEventListener('click', () => {
       if (!confirmBox('建立新專案？目前專案會保留在清單中。')) return;
@@ -301,7 +349,9 @@
     U.$('#board-caption').textContent = U.joinCaption(
       c.areaId ? areaName(c.areaId) : '', itemName(c.itemId) || '（未選工項）', c.stage
     );
-    U.$('#board-date').textContent = (p.watermark.dateFormat === 'ROC' ? U.toRoc(new Date()) : U.toAd(new Date()));
+    const fixedDate = effectiveDate(p);
+    U.$('#board-date').textContent = fixedDate ? stampPreview(p, fixedDate) : '日期依各張照片拍攝時間';
+    U.$('#board-date').classList.toggle('auto', !fixedDate);
 
     chips('#chips-area', p.areas.map((a) => ({ id: a.id, name: a.name || '（未命名）' })), c.areaId, (id) => {
       c.areaId = c.areaId === id ? '' : id; renderShoot();
@@ -318,6 +368,22 @@
     chips('#chips-stage', st.map((s) => ({ id: s, name: s || '不分階段' })), c.stage, (id) => {
       c.stage = id; renderShoot();
     }, '');
+
+    const mode = p.watermark.dateMode || 'exif';
+    chips('#chips-datemode', [
+      { id: 'exif', name: '各張拍攝日' },
+      { id: 'fixed', name: '指定日期' }
+    ], mode, (id) => {
+      const wm = p.watermark;
+      wm.dateMode = id;
+      if (id === 'fixed' && !wm.fixedDate) wm.fixedDate = U.toIso(new Date());
+      save().then(renderShoot);
+    }, '');
+
+    const dateInput = U.$('#f-shot-date');
+    dateInput.style.display = mode === 'fixed' ? '' : 'none';
+    const iso = U.anyToIso(p.watermark.fixedDate);
+    if (dateInput.value !== iso) dateInput.value = iso;
 
     renderGallery();
   }
@@ -393,8 +459,13 @@
   function importFiles(files) {
     const arr = Array.prototype.slice.call(files || []).filter((f) => /^image\//.test(f.type));
     if (!arr.length) return importQueue;
-    // 按下快門當下的歸類設定，之後切換 chips 不影響這批照片
-    const shot = { areaId: state.capture.areaId, itemId: state.capture.itemId, stage: state.capture.stage };
+    // 按下快門當下的歸類與日期設定，之後切換 chips 不影響這批照片
+    const shot = {
+      areaId: state.capture.areaId,
+      itemId: state.capture.itemId,
+      stage: state.capture.stage,
+      date: effectiveDate(state.project)   // null = 沿用各張拍攝日期
+    };
     importQueue = importQueue.then(() => runImport(arr, shot));
     return importQueue;
   }
@@ -408,7 +479,8 @@
     return arr.reduce((chain, file, i) => chain.then(() => {
       return Img.process(file, {
         maxEdge: p.maxEdge, quality: p.quality,
-        watermark: p.watermark, label: label
+        watermark: p.watermark, label: label,
+        date: shot.date || undefined
       }).then((out) => {
         const rec = {
           id: U.uid('ph'), projectId: p.id,
@@ -471,6 +543,11 @@
     U.$('#file-camera').addEventListener('change', (e) => { importFiles(e.target.files); e.target.value = ''; });
     U.$('#file-album').addEventListener('change', (e) => { importFiles(e.target.files); e.target.value = ''; });
     U.$('#gal-filter').addEventListener('change', renderGallery);
+    U.$('#f-shot-date').addEventListener('input', (e) => {
+      state.project.watermark.fixedDate = e.target.value;
+      debouncedSave();
+      renderShoot();
+    });
 
     U.$('#btn-clear-sel').addEventListener('click', () => { state.selection.clear(); renderGallery(); });
     U.$('#btn-bulk-assign').addEventListener('click', () => {

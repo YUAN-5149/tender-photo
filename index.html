@@ -85,8 +85,20 @@
         </select>
       </div>
     </div>
+    <div class="field">
+      <label for="f-wm-datemode">照片日期來源</label>
+      <select class="inp" id="f-wm-datemode">
+        <option value="exif">自動：依每張照片的拍攝日期</option>
+        <option value="fixed">固定：全部使用指定日期</option>
+      </select>
+    </div>
+    <div class="field" id="fixed-date-field">
+      <label for="f-wm-fixeddate">指定日期</label>
+      <input class="inp date" type="date" id="f-wm-fixeddate">
+      <div class="period-readout on" id="fixed-date-readout"></div>
+    </div>
     <label class="check"><input type="checkbox" id="f-wm-label"> 左下角加註工項文字</label>
-    <p class="hint">日期取自照片 EXIF 拍攝時間；無 EXIF 時採檔案時間。</p>
+    <p class="hint" id="datemode-hint"></p>
   </div>
 
   <div class="card">
@@ -146,6 +158,11 @@
     <div class="picker">
       <div class="picker-label">階段</div>
       <div class="chips" id="chips-stage"></div>
+    </div>
+    <div class="picker">
+      <div class="picker-label">照片日期</div>
+      <div class="chips" id="chips-datemode"></div>
+      <input class="inp date shot-date" type="date" id="f-shot-date">
     </div>
   </div>
 
