@@ -47,9 +47,12 @@
   function loadProject(id) {
     return Store.getProject(id).then((p) => {
       if (!p) return null;
+      const changed = Store.migrate(p);
       state.project = p;
       Store.setCurrentId(p.id);
-      return Store.listPhotos(p.id).then((ps) => { state.photos = ps; return p; });
+      return (changed ? Store.saveProject(p) : Promise.resolve(p))
+        .then(() => Store.listPhotos(p.id))
+        .then((ps) => { state.photos = ps; return p; });
     });
   }
 

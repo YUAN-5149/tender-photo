@@ -74,6 +74,29 @@
     return Promise.resolve({ usage: 0, quota: 0 });
   };
 
+  /* ---- 結構版本：既有專案開啟時自動補齊 ---- */
+  Store.SCHEMA = 2;
+
+  /**
+   * 回傳 true 表示有調整、需要存回。
+   * v2：左下角加註工項改為預設關閉 —— 該文字是匯入當下燒進圖片的，
+   *     事後在相簿改工項或階段時不會跟著改，會與 Word 標題列不一致。
+   */
+  Store.migrate = function (p) {
+    if (!p) return false;
+    const from = p.schemaVersion || 1;
+    if (from >= Store.SCHEMA) return false;
+
+    if (from < 2) {
+      p.watermark = p.watermark || {};
+      p.watermark.showLabel = false;
+      if (p.watermark.dateMode === undefined) p.watermark.dateMode = 'exif';
+      if (p.watermark.fixedDate === undefined) p.watermark.fixedDate = '';
+    }
+    p.schemaVersion = Store.SCHEMA;
+    return true;
+  };
+
   /* ---- 專案樣板 ---- */
   Store.newProject = function (seed) {
     const now = new Date();
@@ -96,11 +119,14 @@
         dateFormat: 'AD',         // AD 西元 / ROC 民國
         dateMode: 'exif',         // exif = 各張照片的拍攝日期；fixed = 全部用指定日期
         fixedDate: '',            // dateMode 為 fixed 時使用（ISO）
-        showLabel: true,          // 右下角日期外，左下角加註工項
+        // 左下角加註工項：文字是匯入當下燒進圖片的，事後改分類不會跟著改，
+        // 會與 Word 標題列不一致；Word 已載明工項與階段，故預設關閉。
+        showLabel: false,
         position: 'br'
       },
       maxEdge: 1600,
       quality: 0.82,
+      schemaVersion: Store.SCHEMA,
       createdAt: Date.now(),
       updatedAt: Date.now()
     }, seed || {});
