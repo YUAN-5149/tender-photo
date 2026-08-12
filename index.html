@@ -4,8 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0f2d4a">
+<meta name="color-scheme" content="light">
+<meta name="description" content="現場拍照、依區域與工項歸檔，一鍵產出施工照 Word / PDF / ZIP。純前端、可離線、資料留在裝置上。">
 <title>標案施工現場照系統</title>
 <link rel="manifest" href="manifest.json">
+<!-- iOS 加入主畫面：Safari 不讀 manifest 的圖示與標題 -->
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="施工照">
 <link rel="stylesheet" href="assets/app.css">
 </head>
 <body>
@@ -19,6 +27,7 @@
     </div>
   </div>
   <div class="topbar-right">
+    <span class="pill offline-pill" id="offline-pill" hidden>離線中</span>
     <span class="pill">照片 <b id="badge-count">0</b></span>
   </div>
 </header>
@@ -107,6 +116,17 @@
     <div id="project-list" class="prj-list"></div>
     <button class="btn primary block" id="btn-new-project">＋ 建立新專案</button>
     <p class="hint" id="storage">資料全部保存在本機瀏覽器，不會上傳。</p>
+  </div>
+
+  <div class="card" id="install-card" hidden>
+    <h3>安裝到裝置</h3>
+    <p class="hint" id="install-desc">裝上主畫面後可全螢幕開啟、離線也能拍照歸檔。</p>
+    <button class="btn primary block" id="btn-install" hidden>⬇ 安裝到主畫面</button>
+    <ol class="ios-steps" id="ios-steps" hidden>
+      <li>點工具列的「分享」（方框向上箭頭）</li>
+      <li>往下選「加入主畫面」</li>
+      <li>右上角按「新增」</li>
+    </ol>
   </div>
 </section>
 
@@ -224,7 +244,7 @@
     <p class="hint">PDF 由瀏覽器列印功能產生：目的地請選「另存為 PDF」，邊界選「無」，並勾選「背景圖形」。</p>
   </div>
 
-  <div class="card">
+  <div class="card span-2">
     <h3>版面預覽</h3>
     <button class="btn block" id="btn-preview">產生預覽</button>
     <div id="preview" class="preview"></div>

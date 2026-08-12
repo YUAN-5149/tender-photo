@@ -72,6 +72,8 @@
     U.$$('.view').forEach((n) => n.classList.toggle('on', n.id === 'view-' + v));
     U.$$('.nav-btn').forEach((n) => n.classList.toggle('on', n.dataset.view === v));
     render();
+    // 預覽在隱藏狀態下量不到寬度，切回來時重算一次縮放
+    if (v === 'export') fitPreview();
     window.scrollTo(0, 0);
   }
   g.setView = setView;
@@ -628,6 +630,19 @@
     box.innerHTML = ExportPrint.render(state.project, state.photos);
     box.classList.add('on');
     U.$('#btn-preview').textContent = '重新整理預覽';
+    fitPreview();
+  }
+
+  /* A4 頁面固定 210mm 寬，依容器寬度換算縮放比，任何螢幕都剛好塞滿不橫向捲動 */
+  const A4_PX = 210 / 25.4 * 96;
+  function fitPreview() {
+    const box = U.$('#preview');
+    if (!box || !box.classList.contains('on')) return;
+    const cs = getComputedStyle(box);
+    const inner = box.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    if (inner <= 0) return;
+    const z = Math.min(1, Math.max(0.2, (inner - 2) / A4_PX));
+    box.style.setProperty('--pv-zoom', z.toFixed(3));
   }
 
   function bindExport() {
@@ -688,15 +703,99 @@
     });
   }
 
+  const VIEWS = ['project', 'setup', 'shoot', 'export'];
+
   function init() {
     bindNav(); bindProjectForm(); bindSetup(); bindShoot(); bindExport();
-    bootstrap().then(() => setView(state.project && state.project.items.length ? 'shoot' : 'project'));
-
-    Store.estimate().then((e) => {
-      if (e.quota) U.$('#storage').textContent = '本機已用 ' + U.bytes(e.usage) + ' / ' + U.bytes(e.quota);
+    bootstrap().then(() => {
+      // manifest shortcuts 會帶 ?view=shoot / ?view=export 進來
+      const want = new URLSearchParams(location.search).get('view');
+      setView(VIEWS.indexOf(want) >= 0 ? want
+        : (state.project && state.project.items.length ? 'shoot' : 'project'));
     });
 
+    reportStorage();
+    bindConnectivity();
+    bindInstall();
+    bindViewport();
     registerSW();
+  }
+
+  /* 螢幕尺寸／方向改變時重算 A4 預覽縮放 */
+  function bindViewport() {
+    let t;
+    const relayout = () => { clearTimeout(t); t = setTimeout(fitPreview, 120); };
+    window.addEventListener('resize', relayout);
+    window.addEventListener('orientationchange', relayout);
+  }
+
+  /* 儲存空間：照片全存在 IndexedDB，向瀏覽器申請「持久化」避免空間吃緊時被清掉 */
+  function reportStorage() {
+    const persisted = (navigator.storage && navigator.storage.persist)
+      ? navigator.storage.persisted()
+          .then((ok) => ok || navigator.storage.persist())
+          .catch(() => null)
+      : Promise.resolve(null);
+
+    Promise.all([Store.estimate(), persisted]).then(([e, ok]) => {
+      const parts = ['資料全部保存在本機瀏覽器，不會上傳。'];
+      if (e.quota) parts.push('已用 ' + U.bytes(e.usage) + ' / ' + U.bytes(e.quota) + '。');
+      if (ok === true) parts.push('已設為持久保存，不會被瀏覽器自動清除。');
+      else if (ok === false) parts.push('尚未取得持久保存權限；裝到主畫面後較不會被自動清除，重要照片請盡早匯出。');
+      U.$('#storage').textContent = parts.join('');
+    }).catch(() => {});
+  }
+
+  /* 離線指示：現場常沒訊號，讓使用者知道現在是離線但仍可用 */
+  function bindConnectivity() {
+    const pill = U.$('#offline-pill');
+    let last = navigator.onLine;
+    const sync = (notify) => {
+      const on = navigator.onLine;
+      pill.hidden = on;
+      if (notify && on !== last) toast(on ? '已恢復連線' : '目前離線，拍照與歸檔照常運作');
+      last = on;
+    };
+    window.addEventListener('online', () => sync(true));
+    window.addEventListener('offline', () => sync(true));
+    sync(false);
+  }
+
+  /* 安裝到主畫面：Android/桌面用 beforeinstallprompt，iOS 只能給步驟說明 */
+  function bindInstall() {
+    const card = U.$('#install-card');
+    const btn = U.$('#btn-install');
+    const steps = U.$('#ios-steps');
+    let deferred = null;
+
+    const standalone = window.matchMedia('(display-mode: standalone)').matches
+      || window.matchMedia('(display-mode: minimal-ui)').matches
+      || navigator.standalone === true;
+    if (standalone) return;
+
+    const ua = navigator.userAgent;
+    const iOS = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+    if (iOS) { card.hidden = false; steps.hidden = false; }
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferred = e;
+      card.hidden = false; btn.hidden = false; steps.hidden = true;
+    });
+
+    btn.addEventListener('click', () => {
+      if (!deferred) return;
+      deferred.prompt();
+      deferred.userChoice.then((r) => {
+        if (r.outcome === 'accepted') card.hidden = true;
+        deferred = null; btn.hidden = true;
+      }).catch(() => {});
+    });
+
+    window.addEventListener('appinstalled', () => {
+      card.hidden = true;
+      toast('已安裝，之後可從主畫面直接開啟');
+    });
   }
 
   /* Service Worker：偵測到新版本時提示重新載入，避免使用者停在舊程式 */

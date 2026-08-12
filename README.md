@@ -64,6 +64,28 @@ ZIP 資料夾結構可選 `工項/階段`、`區域/工項/階段` 或不分資�
 
 > **匯出 PDF 提示**：列印對話框中，目的地選「另存為 PDF」、邊界選「無」、勾選「背景圖形」。
 
+### 5. 安裝與離線（PWA）
+- **安裝到主畫面**：Android／桌面 Chrome 會在「專案」頁出現「安裝到主畫面」按鈕；
+  iOS Safari 沒有安裝 API，改顯示「分享 → 加入主畫面」的三步驟說明。已安裝時不再顯示。
+- **主畫面長按捷徑**：可直接跳到「現場拍照」或「預覽與匯出」（`?view=shoot` / `?view=export`）。
+- **持久化儲存**：載入時向瀏覽器申請 `storage.persist()`，避免空間吃緊時 IndexedDB 內的照片被自動清除；
+  「專案清單」下方會顯示已用容量與是否取得持久保存。
+- **離線指示**：斷線時頂列出現「離線中」標記，拍照與歸檔照常運作。
+- **弱網保護**：Service Worker 仍是 network-first，但網路 3.5 秒沒回應就先用快取回應
+  （工地常見「有訊號但極慢」比完全沒訊號更難用）；新版本仍會在背景取回並寫入快取。
+
+### 6. 響應式版面（RWD）
+| 情境 | 調整 |
+|---|---|
+| 窄機（≤360px） | 日期等並排欄位自動改一欄 |
+| 觸控裝置 | 晶片／按鈕加大到約 44px，戴手套也點得到 |
+| 手機橫放 | 白板壓縮、底部導覽列改為橫向小列，讓出垂直空間 |
+| 平板（≥760px） | 導覽列改 sticky、相簿格放大 |
+| 桌機（≥1080px） | 專案／工項／匯出頁改雙欄，版面預覽跨欄 |
+| A4 預覽 | 依容器寬度即時換算縮放比，任何螢幕都剛好塞滿、不橫向捲動 |
+
+另支援 `prefers-reduced-motion`，並以 `env(safe-area-inset-*)` 避開瀏海與圓角（含橫向時的左右）。
+
 ---
 
 ## 使用方式
@@ -88,6 +110,7 @@ git add -A && git commit -m "說明" && git push
 ```
 
 Service Worker 採 network-first，使用者重新整理即取得新版，不需清快取。
+改動 `sw.js` 內 `ASSETS` 清單時記得同步調高 `CACHE` 版本號（目前 `tender-photo-v3`）。
 
 ---
 
@@ -108,9 +131,9 @@ tender-photo/
 │   ├── export-zip.js     ZIP 打包與 CSV 清單
 │   └── app.js            畫面與流程控制
 ├── vendor/               docx 9.7.1、JSZip 3.10.1（本機打包）
-├── icons/                PWA 圖示
-├── manifest.json
-└── sw.js                 Service Worker（network-first，離線可用）
+├── icons/                PWA 圖示（any／maskable／apple-touch-icon）
+├── manifest.json         含 id、display_override、shortcuts
+└── sw.js                 Service Worker（network-first ＋ 弱網逾時回退快取）
 ```
 
 ## 版面對照表
@@ -134,3 +157,5 @@ tender-photo/
 - 頁尾頁碼、簽核欄位
 - 照片旋轉／裁切工具
 - 匯出設定檔，於多台裝置間同步工項清單
+- manifest 加 `screenshots`（Android 安裝對話框會改用較豐富的版面）
+- 深色模式（現場多在戶外強光下，暫以淺色為主）
