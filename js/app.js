@@ -683,9 +683,32 @@
       if (e.quota) U.$('#storage').textContent = '本機已用 ' + U.bytes(e.usage) + ' / ' + U.bytes(e.quota);
     });
 
-    if ('serviceWorker' in navigator && location.protocol !== 'file:') {
-      navigator.serviceWorker.register('sw.js').catch(() => {});
-    }
+    registerSW();
+  }
+
+  /* Service Worker：偵測到新版本時提示重新載入，避免使用者停在舊程式 */
+  function registerSW() {
+    if (!('serviceWorker' in navigator) || location.protocol === 'file:') return;
+
+    U.$('#btn-update').addEventListener('click', () => location.reload());
+    U.$('#btn-update-later').addEventListener('click', () => U.$('#update-bar').classList.remove('on'));
+
+    navigator.serviceWorker.register('sw.js').then((reg) => {
+      reg.addEventListener('updatefound', () => {
+        const sw = reg.installing;
+        if (!sw) return;
+        sw.addEventListener('statechange', () => {
+          // 已有 controller 代表這是「更新」而非首次安裝
+          if (sw.state === 'installed' && navigator.serviceWorker.controller) {
+            U.$('#update-bar').classList.add('on');
+          }
+        });
+      });
+      // 回到前景時主動檢查更新（現場常整天不關網頁）
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) reg.update().catch(() => {});
+      });
+    }).catch(() => {});
   }
 
   document.addEventListener('DOMContentLoaded', init);
