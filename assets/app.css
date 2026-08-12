@@ -109,7 +109,7 @@ input.date::-webkit-date-and-time-value{text-align:left}
 .btn.big{padding:15px 18px; font-size:16px; flex:1}
 .btn.block{display:flex; width:100%; margin-bottom:9px}
 .btn-row{display:flex; gap:9px; flex-wrap:wrap}
-.btn-row .btn{flex:1}
+.btn-row .btn{flex:1 1 auto}   /* auto：三顆按鈕時依文字長度分配，不會被壓到換行 */
 
 /* ---- 專案清單 ---- */
 .prj-list{margin-bottom:10px}
@@ -137,6 +137,33 @@ input.date::-webkit-date-and-time-value{text-align:left}
 .edit-row .inp{flex:1 1 150px; min-width:0}
 .edit-row .stage-sel{flex:1 1 130px; max-width:190px}
 .row-ops{display:flex; gap:4px; flex:none}
+
+/* ---- 拖移排序 ---- */
+.drag-handle{display:none}
+.sorting .row-ops{display:none}
+.sorting .edit-row{
+  background:#f6f9fc; border:1px dashed var(--line); border-radius:9px;
+  padding:5px 7px; margin-bottom:7px; flex-wrap:nowrap;
+}
+/* 排序時壓成單行、只留名稱：列數矮，手機拖起來不用一直捲，
+   名稱也能拿到整行寬度，長工項名不會被截掉 */
+.sorting .edit-row .inp{flex:1 1 90px}
+.sorting .edit-row .stage-sel{display:none}
+.sorting .drag-handle{
+  display:grid; place-items:center; flex:none;
+  width:38px; align-self:stretch; min-height:40px;
+  border-radius:8px; background:var(--navy); color:var(--amber);
+  font-size:19px; line-height:1; cursor:grab;
+  touch-action:none;            /* 不加會被瀏覽器當成捲動手勢，拖不動 */
+  -webkit-user-select:none; user-select:none;
+}
+.sorting.is-dragging{-webkit-user-select:none; user-select:none}
+.sorting.is-dragging .drag-handle{cursor:grabbing}
+.edit-row.dragging{
+  position:relative; z-index:5; background:#fff;
+  border-style:solid; border-color:var(--amber);
+  box-shadow:0 8px 22px rgba(15,45,74,.22);
+}
 
 .preset-list{display:grid; gap:8px}
 .preset-btn{flex-direction:column; align-items:flex-start; text-align:left; padding:11px 13px; gap:2px}

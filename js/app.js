@@ -7,6 +7,7 @@
     photos: [],
     capture: { areaId: '', itemId: '', stage: '' },
     selection: new Set(),
+    sorting: { area: false, item: false },   // 拖移排序模式（不寫進專案）
     view: 'shoot'
   };
   g.state = state;
@@ -256,7 +257,7 @@
 
     const areaBox = U.$('#area-list');
     areaBox.innerHTML = '';
-    p.areas.forEach((a, idx) => areaBox.appendChild(rowEditor(a.name, '例：3 樓 301 教室', (v) => {
+    p.areas.forEach((a, idx) => areaBox.appendChild(rowEditor(a, '例：3 樓 301 教室', (v) => {
       a.name = v; debouncedSave();
     }, () => {
       p.areas.splice(idx, 1); save().then(render);
@@ -270,7 +271,8 @@
       Object.keys(Store.STAGE_SETS).forEach((k) => {
         sel.appendChild(U.el('option', { value: k, text: Store.STAGE_SETS[k].label, selected: it.stageSet === k ? 'selected' : null }));
       });
-      const row = U.el('div', { class: 'edit-row' }, [
+      const row = U.el('div', { class: 'edit-row', 'data-id': it.id }, [
+        dragHandle(),
         U.el('input', {
           class: 'inp', value: it.name, placeholder: '工項名稱',
           oninput: (e) => { it.name = e.target.value; debouncedSave(); }
@@ -293,6 +295,9 @@
     });
     if (!p.items.length) itemBox.appendChild(U.el('div', { class: 'hint', text: '尚未建立工項，可從下方範本一鍵載入。' }));
 
+    renderSortMode('area');
+    renderSortMode('item');
+
     const preBox = U.$('#preset-list');
     if (!preBox.dataset.done) {
       PRESETS.forEach((pre) => {
@@ -311,9 +316,10 @@
     }
   }
 
-  function rowEditor(value, placeholder, onInput, onDelete, idx, arr) {
-    return U.el('div', { class: 'edit-row' }, [
-      U.el('input', { class: 'inp', value: value, placeholder: placeholder, oninput: (e) => onInput(e.target.value) }),
+  function rowEditor(obj, placeholder, onInput, onDelete, idx, arr) {
+    return U.el('div', { class: 'edit-row', 'data-id': obj.id }, [
+      dragHandle(),
+      U.el('input', { class: 'inp', value: obj.name, placeholder: placeholder, oninput: (e) => onInput(e.target.value) }),
       U.el('div', { class: 'row-ops' }, [
         U.el('button', { class: 'btn tiny', text: '↑', onclick: () => { U.move(arr, idx, idx - 1); save().then(render); } }),
         U.el('button', { class: 'btn tiny', text: '↓', onclick: () => { U.move(arr, idx, idx + 1); save().then(render); } }),
@@ -322,7 +328,152 @@
     ]);
   }
 
+  function dragHandle() {
+    return U.el('span', { class: 'drag-handle', text: '⠿', title: '按住拖曳調整順序', 'aria-hidden': 'true' });
+  }
+
+  /* ---- 拖移排序 ----
+     手機沒有 HTML5 drag & drop，改用 Pointer Events：拖曳時直接搬 DOM，
+     放開才一次寫回陣列。每次搬完會把基準點補回位移量，畫面才不會跳。 */
+  const SORT = {
+    area: { box: '#area-list', btn: '#btn-sort-area', arr: () => state.project.areas },
+    item: { box: '#item-list', btn: '#btn-sort-item', arr: () => state.project.items }
+  };
+
+  function renderSortMode(kind) {
+    const cfg = SORT[kind];
+    const on = state.sorting[kind];
+    const box = U.$(cfg.box);
+    const btn = U.$(cfg.btn);
+    box.classList.toggle('sorting', on);
+    btn.classList.toggle('primary', on);
+    btn.setAttribute('aria-pressed', String(on));
+    btn.textContent = on ? '🔒 鎖定順序' : '⇅ 拖移排序';
+  }
+
+  function toggleSortMode(kind) {
+    const n = (SORT[kind].arr() || []).length;
+    if (!state.sorting[kind] && n < 2) { toast('至少要有兩列才需要排序'); return; }
+    state.sorting[kind] = !state.sorting[kind];
+    renderSortMode(kind);
+    if (!state.sorting[kind]) toast('順序已鎖定');
+  }
+
+  function bindSortable(kind) {
+    const cfg = SORT[kind];
+    const box = U.$(cfg.box);
+    let drag = null;
+    let raf = 0;
+
+    const rows = () => U.$$('.edit-row', box);
+
+    // 量測「若不套用 top 位移」時的位置，用來算 DOM 搬移造成的落差
+    function baseTop(el) {
+      const keep = el.style.top;
+      el.style.top = '0px';
+      const t = el.getBoundingClientRect().top;
+      el.style.top = keep;
+      return t;
+    }
+
+    function place(ref) {
+      const before = baseTop(drag.el);
+      box.insertBefore(drag.el, ref);
+      drag.grabY += baseTop(drag.el) - before;
+      drag.el.style.top = (drag.lastY - drag.grabY) + 'px';
+    }
+
+    function reorder() {
+      const mid = drag.el.getBoundingClientRect();
+      const c = mid.top + mid.height / 2;
+      let ref = null;
+      for (const s of rows()) {
+        if (s === drag.el) continue;
+        const r = s.getBoundingClientRect();
+        if (c < r.top + r.height / 2) { ref = s; break; }
+      }
+      if (drag.el.nextElementSibling !== ref) place(ref);
+    }
+
+    // 手指停在畫面邊緣時持續捲動，長清單才拖得動
+    function autoScroll() {
+      raf = 0;
+      if (!drag) return;
+      const edge = 80;
+      let dy = 0;
+      if (drag.lastY < edge) dy = -Math.ceil((edge - drag.lastY) / 6);
+      else if (drag.lastY > innerHeight - edge) dy = Math.ceil((drag.lastY - (innerHeight - edge)) / 6);
+      if (dy) {
+        const y0 = scrollY;
+        scrollBy(0, dy);
+        // 頁面捲動後元素的靜態位置也跟著移動，基準要補回來才會黏在手指上
+        drag.grabY -= (scrollY - y0);
+        drag.el.style.top = (drag.lastY - drag.grabY) + 'px';
+        reorder();
+      }
+      raf = requestAnimationFrame(autoScroll);
+    }
+
+    function onMove(e) {
+      if (!drag) return;
+      e.preventDefault();
+      drag.lastY = e.clientY;
+      drag.el.style.top = (e.clientY - drag.grabY) + 'px';
+      reorder();
+    }
+
+    function end() {
+      if (!drag) return;
+      if (raf) { cancelAnimationFrame(raf); raf = 0; }
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', end);
+      document.removeEventListener('pointercancel', end);
+
+      drag.el.classList.remove('dragging');
+      drag.el.style.top = '';
+      box.classList.remove('is-dragging');
+      drag = null;
+
+      // DOM 是唯一真相，依畫面順序重排陣列（保留同一個陣列參照）
+      const order = rows().map((r) => r.dataset.id);
+      const arr = cfg.arr();
+      const next = order.map((id) => arr.find((x) => x.id === id)).filter(Boolean);
+      if (next.length === arr.length) {
+        arr.length = 0;
+        Array.prototype.push.apply(arr, next);
+        save().then(render);
+      } else {
+        render();   // 對不起來就直接依陣列重畫，不動資料
+      }
+    }
+
+    box.addEventListener('pointerdown', (e) => {
+      if (!box.classList.contains('sorting')) return;
+      const handle = e.target.closest && e.target.closest('.drag-handle');
+      if (!handle) return;
+      const el = handle.closest('.edit-row');
+      if (!el) return;
+      e.preventDefault();
+
+      drag = { el: el, grabY: e.clientY, lastY: e.clientY };
+      el.classList.add('dragging');
+      box.classList.add('is-dragging');
+
+      /* 監聽掛在 document 而非清單上：拖曳過程會用 insertBefore 搬動這一列，
+         節點一被搬走 pointer capture 就失效，手指若停在清單外（例如蓋住頂列）
+         放開時清單收不到 pointerup，順序就不會寫回去。 */
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', end);
+      document.addEventListener('pointercancel', end);
+      raf = requestAnimationFrame(autoScroll);
+    });
+  }
+
   function bindSetup() {
+    U.$('#btn-sort-area').addEventListener('click', () => toggleSortMode('area'));
+    U.$('#btn-sort-item').addEventListener('click', () => toggleSortMode('item'));
+    bindSortable('area');
+    bindSortable('item');
     U.$('#btn-add-area').addEventListener('click', () => {
       state.project.areas.push(Store.newArea(''));
       save().then(render);
