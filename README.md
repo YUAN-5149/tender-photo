@@ -1,5 +1,7 @@
 # 標案施工現場照系統
 
+**線上使用：<https://yuan-5149.github.io/tender-photo/>**（手機開啟後可「加入主畫面」，離線亦可拍照歸檔）
+
 現場拍照 → 依「位置區域／工項／施工階段」歸檔 → 一鍵產出 **Word(.docx)、PDF、ZIP**。
 
 版面完全對照既有的施工照範本（`114.08.28-龍山國中-施工照.docx`）：A4 直式、每頁一張表格、
@@ -72,16 +74,17 @@ python -m http.server 8931
 
 瀏覽 <http://localhost:8931>。
 
-### 部署到 GitHub Pages
+### 部署
+
+已部署於 GitHub Pages（`main` 分支根目錄）：<https://yuan-5149.github.io/tender-photo/>
+
+純靜態、無建置流程，`vendor/` 內已含所有函式庫，不依賴 CDN。改好推上 `main` 即自動重新部署：
 
 ```bash
-git init && git add . && git commit -m "init: 標案施工現場照系統"
+git add -A && git commit -m "說明" && git push
 ```
 
-推上 GitHub 後於 Settings → Pages 選 `main` 分支根目錄即可。
-純靜態、無建置流程，`vendor/` 內已含所有函式庫，不依賴 CDN。
-
-手機開啟後可「加入主畫面」，離線亦能拍照與歸檔。
+Service Worker 採 network-first，使用者重新整理即取得新版，不需清快取。
 
 ---
 
