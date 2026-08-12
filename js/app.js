@@ -272,7 +272,6 @@
         sel.appendChild(U.el('option', { value: k, text: Store.STAGE_SETS[k].label, selected: it.stageSet === k ? 'selected' : null }));
       });
       const row = U.el('div', { class: 'edit-row', 'data-id': it.id }, [
-        dragHandle(),
         U.el('input', {
           class: 'inp', value: it.name, placeholder: '工項名稱',
           oninput: (e) => { it.name = e.target.value; debouncedSave(); }
@@ -289,7 +288,8 @@
               p.items.splice(idx, 1); save().then(render);
             }
           })
-        ])
+        ]),
+        dragHandle()          // 放最後：拖移模式下握把落在每列右側
       ]);
       itemBox.appendChild(row);
     });
@@ -321,13 +321,13 @@
 
   function rowEditor(obj, placeholder, onInput, onDelete, idx, arr) {
     return U.el('div', { class: 'edit-row', 'data-id': obj.id }, [
-      dragHandle(),
       U.el('input', { class: 'inp', value: obj.name, placeholder: placeholder, oninput: (e) => onInput(e.target.value) }),
       U.el('div', { class: 'row-ops' }, [
         U.el('button', { class: 'btn tiny', text: '↑', onclick: () => { U.move(arr, idx, idx - 1); save().then(render); } }),
         U.el('button', { class: 'btn tiny', text: '↓', onclick: () => { U.move(arr, idx, idx + 1); save().then(render); } }),
         U.el('button', { class: 'btn tiny danger', text: '刪除', onclick: onDelete })
-      ])
+      ]),
+      dragHandle()            // 放最後：拖移模式下握把落在每列右側
     ]);
   }
 
@@ -483,22 +483,6 @@
     });
     U.$('#btn-add-item').addEventListener('click', () => {
       state.project.items.push(Store.newItem(''));
-      save().then(render);
-    });
-    U.$('#btn-bulk-area').addEventListener('click', () => {
-      const txt = window.prompt('每行一個位置區域，例如：\n1F 走廊\n2F 201 教室\n2F 202 教室');
-      if (!txt) return;
-      txt.split(/\r?\n/).map((s) => s.trim()).filter(Boolean).forEach((n) => {
-        if (!state.project.areas.some((a) => a.name === n)) state.project.areas.push(Store.newArea(n));
-      });
-      save().then(render);
-    });
-    U.$('#btn-bulk-item').addEventListener('click', () => {
-      const txt = window.prompt('每行一個工項名稱');
-      if (!txt) return;
-      txt.split(/\r?\n/).map((s) => s.trim()).filter(Boolean).forEach((n) => {
-        if (!state.project.items.some((a) => a.name === n)) state.project.items.push(Store.newItem(n));
-      });
       save().then(render);
     });
   }

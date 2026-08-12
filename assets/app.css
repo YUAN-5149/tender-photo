@@ -152,9 +152,9 @@ input.date::-webkit-date-and-time-value{text-align:left}
 }
 
 /* ---- 拖移排序 ---- */
-/* 兩個工具鈕靠左，拖移鈕推到最右邊，跟「新增／貼上」分開 */
+/* 兩顆鈕靠左並排，不要撐滿整列 */
 .btn-row.row-tools .btn{flex:0 1 auto}
-.btn-row.row-tools .btn.btn-sort{flex:0 0 auto; margin-left:auto}
+.btn-row.row-tools .btn.btn-sort{flex:0 0 auto}
 .btn-sort{background:#e3edf7; border-color:#b9d2e8; color:var(--navy)}
 .btn-sort:hover{background:#d3e2f1}
 .drag-handle{display:none}
