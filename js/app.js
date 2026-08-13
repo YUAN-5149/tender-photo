@@ -352,7 +352,7 @@
     U.$$(cfg.btn).forEach((btn) => {
       btn.classList.toggle('primary', on);
       btn.setAttribute('aria-pressed', String(on));
-      btn.textContent = on ? '🔒 鎖定' : '⇅ 手動拖移';
+      btn.textContent = on ? '🔒 鎖定' : '⇅ 手動拖移或刪除';
     });
   }
 

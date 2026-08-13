@@ -142,12 +142,15 @@ input.date::-webkit-date-and-time-value{text-align:left}
 .row-ops{display:none; gap:4px; flex:none; margin-left:27px}
 
 /* 列數統計，直接看得出建了幾項 */
-.h3-count{margin-left:8px; font-size:12px; font-weight:500; color:var(--muted)}
+.h3-count{margin-left:5px; font-size:12px; font-weight:500; color:var(--muted)}
 
 /* 標題旁的快捷鈕：長清單不必捲到底才能新增或解鎖 */
-.card h3.with-tools{display:flex; align-items:center; flex-wrap:wrap; gap:6px}
-.h3-tools{margin-left:auto; display:flex; gap:6px; flex:none}
-.h3-tools .btn{font-weight:600}
+.card h3.with-tools{display:flex; align-items:center; flex-wrap:wrap; gap:5px}
+.h3-tools{margin-left:auto; display:flex; gap:5px; flex:none}
+/* 標題本身已佔掉一半寬度，橫向 padding 收窄才擠得進同一行；
+   垂直 padding 不動，觸控高度維持。真的塞不下時會整組換到第二行仍靠右，不會壞版。 */
+/* .btn.tiny 這一段要壓過 pointer:coarse 的 padding，故一併寫上 .tiny */
+.h3-tools .btn.tiny{font-weight:600; padding-left:8px; padding-right:8px}
 
 /* 序號：用 CSS counter 依 DOM 順序自動編，拖曳過程中會即時跟著換 */
 #area-list,#item-list{counter-reset:row}
