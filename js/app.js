@@ -351,15 +351,17 @@
     box.classList.toggle('sorting', on);
     btn.classList.toggle('primary', on);
     btn.setAttribute('aria-pressed', String(on));
-    btn.textContent = on ? '🔒 鎖定順序' : '⇅ 手動拖移';
+    btn.textContent = on ? '🔒 鎖定' : '⇅ 手動拖移';
   }
 
   function toggleSortMode(kind) {
-    const n = (SORT[kind].arr() || []).length;
-    if (!state.sorting[kind] && n < 2) { toast('至少要有兩列才需要排序'); return; }
+    // 這個模式同時管排序與刪除，只有一列時也要能進去（否則刪不掉最後一列）
+    if (!state.sorting[kind] && !(SORT[kind].arr() || []).length) {
+      toast('尚未建立任何項目'); return;
+    }
     state.sorting[kind] = !state.sorting[kind];
     renderSortMode(kind);
-    if (!state.sorting[kind]) toast('順序已鎖定');
+    if (!state.sorting[kind]) toast('已鎖定');
   }
 
   function bindSortable(kind) {

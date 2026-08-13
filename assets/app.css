@@ -136,8 +136,9 @@ input.date::-webkit-date-and-time-value{text-align:left}
 .edit-row{display:flex; gap:7px; align-items:center; margin-bottom:8px; flex-wrap:wrap}
 .edit-row .inp{flex:1 1 150px; min-width:0}
 .edit-row .stage-sel{flex:1 1 130px; max-width:190px}
-/* 窄螢幕時 ↑↓刪除 會換到第二行，縮排對齊上一行的輸入框（序號 20 ＋ gap 7） */
-.row-ops{display:flex; gap:4px; flex:none; margin-left:27px}
+/* ↑↓ 與刪除只在「手動拖移」模式出現，鎖定時清單固定不動。
+   窄螢幕會換到第二行，縮排對齊上一行的輸入框（序號 20 ＋ gap 7） */
+.row-ops{display:none; gap:4px; flex:none; margin-left:27px}
 
 /* 列數統計，直接看得出建了幾項 */
 .h3-count{margin-left:8px; font-size:12px; font-weight:500; color:var(--muted)}
@@ -158,14 +159,17 @@ input.date::-webkit-date-and-time-value{text-align:left}
 .btn-sort{background:#e3edf7; border-color:#b9d2e8; color:var(--navy)}
 .btn-sort:hover{background:#d3e2f1}
 .drag-handle{display:none}
-.sorting .row-ops{display:none}
 .sorting .edit-row{
   background:#f6f9fc; border:1px dashed var(--line); border-radius:9px;
-  padding:5px 7px; margin-bottom:7px; flex-wrap:nowrap;
+  padding:5px 7px; margin-bottom:7px;
 }
-/* 排序時壓成單行、只留名稱：列數矮，手機拖起來不用一直捲，
-   名稱也能拿到整行寬度，長工項名不會被截掉 */
-.sorting .edit-row .inp{flex:1 1 90px}
+/* 手動拖移模式：名稱＋握把一行，↑↓刪除 窄螢幕會落到第二行。
+   階段下拉先收起，列才矮，手機拖長清單不用一直捲。
+   用 order 排順序，讓握把永遠在名稱右邊、操作鈕排最後。 */
+.sorting .edit-row::before{order:0}
+.sorting .edit-row .inp{order:1; flex:1 1 90px}
+.sorting .edit-row .drag-handle{order:2}
+.sorting .edit-row .row-ops{order:3; display:flex}
 .sorting .edit-row .stage-sel{display:none}
 .sorting .drag-handle{
   display:grid; place-items:center; flex:none;
