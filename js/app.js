@@ -338,20 +338,22 @@
   /* ---- 拖移排序 ----
      手機沒有 HTML5 drag & drop，改用 Pointer Events：拖曳時直接搬 DOM，
      放開才一次寫回陣列。每次搬完會把基準點補回位移量，畫面才不會跳。 */
+  /* 標題旁與清單下方各有一組按鈕（長清單不必捲到底），
+     以 data-sort / data-add 標記，兩組共用同一份狀態 */
   const SORT = {
-    area: { box: '#area-list', btn: '#btn-sort-area', arr: () => state.project.areas },
-    item: { box: '#item-list', btn: '#btn-sort-item', arr: () => state.project.items }
+    area: { box: '#area-list', btn: '[data-sort="area"]', arr: () => state.project.areas },
+    item: { box: '#item-list', btn: '[data-sort="item"]', arr: () => state.project.items }
   };
 
   function renderSortMode(kind) {
     const cfg = SORT[kind];
     const on = state.sorting[kind];
-    const box = U.$(cfg.box);
-    const btn = U.$(cfg.btn);
-    box.classList.toggle('sorting', on);
-    btn.classList.toggle('primary', on);
-    btn.setAttribute('aria-pressed', String(on));
-    btn.textContent = on ? '🔒 鎖定' : '⇅ 手動拖移';
+    U.$(cfg.box).classList.toggle('sorting', on);
+    U.$$(cfg.btn).forEach((btn) => {
+      btn.classList.toggle('primary', on);
+      btn.setAttribute('aria-pressed', String(on));
+      btn.textContent = on ? '🔒 鎖定' : '⇅ 手動拖移';
+    });
   }
 
   function toggleSortMode(kind) {
@@ -475,17 +477,27 @@
   }
 
   function bindSetup() {
-    U.$('#btn-sort-area').addEventListener('click', () => toggleSortMode('area'));
-    U.$('#btn-sort-item').addEventListener('click', () => toggleSortMode('item'));
     bindSortable('area');
     bindSortable('item');
-    U.$('#btn-add-area').addEventListener('click', () => {
-      state.project.areas.push(Store.newArea(''));
-      save().then(render);
+
+    U.$$('[data-sort]').forEach((b) => {
+      b.addEventListener('click', () => toggleSortMode(b.dataset.sort));
     });
-    U.$('#btn-add-item').addEventListener('click', () => {
-      state.project.items.push(Store.newItem(''));
-      save().then(render);
+    U.$$('[data-add]').forEach((b) => {
+      b.addEventListener('click', () => {
+        const kind = b.dataset.add;
+        const arr = SORT[kind].arr();
+        arr.push(kind === 'area' ? Store.newArea('') : Store.newItem(''));
+        save().then(render).then(() => {
+          // 從標題旁新增時新列在清單最下方，捲過去並聚焦，免得以為沒反應
+          const rows = U.$$('.edit-row', U.$(SORT[kind].box));
+          const last = rows[rows.length - 1];
+          if (!last) return;
+          last.scrollIntoView({ block: 'center' });
+          const inp = U.$('.inp', last);
+          if (inp) inp.focus();
+        });
+      });
     });
   }
 

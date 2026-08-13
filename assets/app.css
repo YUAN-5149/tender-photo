@@ -5,6 +5,7 @@
   --danger:#c0392b; --ok:#1e8e4e;
   --r:12px; --sh:0 1px 3px rgba(15,45,74,.10), 0 8px 24px rgba(15,45,74,.06);
   --pv-zoom:.42;
+  --nav-h:62px;          /* 底部導覽列高度，浮動元件要讓開 */
 }
 *{box-sizing:border-box}
 [hidden]{display:none !important}
@@ -143,6 +144,11 @@ input.date::-webkit-date-and-time-value{text-align:left}
 /* 列數統計，直接看得出建了幾項 */
 .h3-count{margin-left:8px; font-size:12px; font-weight:500; color:var(--muted)}
 
+/* 標題旁的快捷鈕：長清單不必捲到底才能新增或解鎖 */
+.card h3.with-tools{display:flex; align-items:center; flex-wrap:wrap; gap:6px}
+.h3-tools{margin-left:auto; display:flex; gap:6px; flex:none}
+.h3-tools .btn{font-weight:600}
+
 /* 序號：用 CSS counter 依 DOM 順序自動編，拖曳過程中會即時跟著換 */
 #area-list,#item-list{counter-reset:row}
 .edit-row::before{
@@ -153,7 +159,17 @@ input.date::-webkit-date-and-time-value{text-align:left}
 }
 
 /* ---- 拖移排序 ---- */
-/* 兩顆鈕靠左並排，不要撐滿整列 */
+/* 下方那組改為浮動：捲動時黏在該卡片可視範圍的右下角，不必捲到底才點得到。
+   用 sticky 而非 fixed —— 浮動範圍自動限縮在自己的卡片內，捲出該卡片就歸位，
+   兩張卡片也不會同時浮出來打架。 */
+.btn-row.row-tools{
+  position:sticky; bottom:calc(var(--nav-h) + 10px + env(safe-area-inset-bottom));
+  z-index:20; width:fit-content; margin-left:auto; justify-content:flex-end;
+  gap:8px; padding:7px; border-radius:999px;
+  background:rgba(255,255,255,.92);
+  -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
+  box-shadow:0 6px 20px rgba(15,45,74,.22);
+}
 .btn-row.row-tools .btn{flex:0 1 auto}
 .btn-row.row-tools .btn.btn-sort{flex:0 0 auto}
 .btn-sort{background:#e3edf7; border-color:#b9d2e8; color:var(--navy)}
@@ -182,7 +198,8 @@ input.date::-webkit-date-and-time-value{text-align:left}
 .sorting.is-dragging{-webkit-user-select:none; user-select:none}
 .sorting.is-dragging .drag-handle{cursor:grabbing}
 .edit-row.dragging{
-  position:relative; z-index:5; background:#fff;
+  /* 25：要蓋過浮動按鈕列(20)，但仍在頂列與導覽列(30)之下 */
+  position:relative; z-index:25; background:#fff;
   border-style:solid; border-color:var(--amber);
   box-shadow:0 8px 22px rgba(15,45,74,.22);
 }
@@ -369,6 +386,7 @@ body.printing #print-root{display:block}
 
 /* ---- 手機橫放：垂直空間很少，壓縮白板與導覽列 ---- */
 @media (orientation:landscape) and (max-height:520px){
+  :root{--nav-h:40px}
   main{padding-bottom:74px}
   .board{padding:10px 14px 9px; margin-bottom:9px}
   .board-caption{font-size:clamp(17px,3.4vw,22px); margin:2px 0 4px}
