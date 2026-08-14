@@ -96,15 +96,15 @@
     f('f-agency', p.agency);
     f('f-projectName', p.projectName);
     f('f-docTitle', p.docTitle);
-    f('f-periodStart', U.anyToIso(p.periodStart));
-    f('f-periodEnd', U.anyToIso(p.periodEnd));
+    setDateField('f-periodStart', p.periodStart);
+    setDateField('f-periodEnd', p.periodEnd);
     f('f-vendor', p.vendor);
     renderPeriodReadout();
     U.$('#f-wm-format').value = p.watermark.dateFormat;
     U.$('#f-wm-label').checked = !!p.watermark.showLabel;
     U.$('#f-maxEdge').value = String(p.maxEdge);
     U.$('#f-wm-datemode').value = p.watermark.dateMode || 'exif';
-    f('f-wm-fixeddate', U.anyToIso(p.watermark.fixedDate));
+    setDateField('f-wm-fixeddate', p.watermark.fixedDate);
     renderDateMode();
 
     // 頁首即時預覽
@@ -219,10 +219,73 @@
     });
   }
 
+  /* ===== 可鍵盤輸入的日期欄位 =========================================
+     文字框可自由打 115.6.1 / 115/6/1 / 1150601 / 2026-06-01 等寫法，
+     離開欄位或按 Enter 時自動正規化為民國格式 115.06.01；
+     旁邊的 📅 按鈕開啟系統日曆，兩種輸入方式並存。
+     onCommit 收到的是 ISO 字串（''＝清空），維持內部一律存 ISO。   */
+
+  const dateFields = {};   // id → { set(iso) }
+
+  function bindDateField(id, onCommit) {
+    const input = U.$('#' + id);
+    const cal = U.$('#' + id + '-cal');
+    if (!input) return;
+
+    const setText = (iso) => {
+      const d = U.parseDateInput(iso);
+      const txt = d ? U.toRoc(d) : '';
+      if (input.value !== txt) input.value = txt;
+      input.classList.remove('bad');
+    };
+    dateFields[id] = { set: setText };
+
+    // 打字途中只做提示，不干擾輸入
+    input.addEventListener('input', () => {
+      const raw = input.value.trim();
+      input.classList.toggle('bad', !!raw && !U.parseDateInput(raw));
+    });
+
+    const commit = () => {
+      const raw = input.value.trim();
+      if (!raw) { input.classList.remove('bad'); onCommit(''); return; }
+      const d = U.parseDateInput(raw);
+      if (!d) { input.classList.add('bad'); return; }   // 保留原輸入讓使用者修正
+      input.classList.remove('bad');
+      input.value = U.toRoc(d);
+      onCommit(U.toIso(d));
+    };
+
+    input.addEventListener('blur', commit);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); commit(); input.blur(); }
+    });
+
+    if (cal) {
+      cal.addEventListener('change', () => {
+        if (!cal.value) return;
+        const d = U.parseDateInput(cal.value);
+        if (!d) return;
+        input.value = U.toRoc(d);
+        input.classList.remove('bad');
+        onCommit(U.toIso(d));
+      });
+      const btn = U.$('.datefield-btn[data-date-for="' + id + '"]');
+      if (btn) btn.addEventListener('click', () => {
+        const d = U.parseDateInput(input.value) || new Date();
+        cal.value = U.toIso(d);
+        if (cal.showPicker) { try { cal.showPicker(); return; } catch (e) { /* 不支援就退回點擊 */ } }
+        cal.focus(); cal.click();
+      });
+    }
+  }
+
+  const setDateField = (id, iso) => { if (dateFields[id]) dateFields[id].set(iso); };
+
   function bindProjectForm() {
     const map = {
-      'f-agency': 'agency', 'f-projectName': 'projectName', 'f-docTitle': 'docTitle',
-      'f-periodStart': 'periodStart', 'f-periodEnd': 'periodEnd', 'f-vendor': 'vendor'
+      'f-agency': 'agency', 'f-projectName': 'projectName',
+      'f-docTitle': 'docTitle', 'f-vendor': 'vendor'
     };
     Object.keys(map).forEach((id) => {
       U.$('#' + id).addEventListener('input', (e) => {
@@ -231,6 +294,16 @@
         renderProject();
       });
     });
+    bindDateField('f-periodStart', (iso) => {
+      state.project.periodStart = iso; save().then(renderProject);
+    });
+    bindDateField('f-periodEnd', (iso) => {
+      state.project.periodEnd = iso; save().then(renderProject);
+    });
+    bindDateField('f-wm-fixeddate', (iso) => {
+      state.project.watermark.fixedDate = iso; save().then(renderProject);
+    });
+
     U.$('#f-wm-format').addEventListener('change', (e) => { state.project.watermark.dateFormat = e.target.value; debouncedSave(); });
     U.$('#f-wm-label').addEventListener('change', (e) => { state.project.watermark.showLabel = e.target.checked; debouncedSave(); });
     U.$('#f-wm-datemode').addEventListener('change', (e) => {
@@ -238,11 +311,6 @@
       wm.dateMode = e.target.value;
       if (wm.dateMode === 'fixed' && !wm.fixedDate) wm.fixedDate = U.toIso(new Date());
       save().then(renderProject);
-    });
-    U.$('#f-wm-fixeddate').addEventListener('input', (e) => {
-      state.project.watermark.fixedDate = e.target.value;
-      debouncedSave();
-      renderDateMode();
     });
     U.$('#f-maxEdge').addEventListener('change', (e) => { state.project.maxEdge = +e.target.value; debouncedSave(); });
     U.$('#btn-new-project').addEventListener('click', () => {
@@ -550,10 +618,8 @@
       save().then(renderShoot);
     }, '');
 
-    const dateInput = U.$('#f-shot-date');
-    dateInput.style.display = mode === 'fixed' ? '' : 'none';
-    const iso = U.anyToIso(p.watermark.fixedDate);
-    if (dateInput.value !== iso) dateInput.value = iso;
+    U.$('#f-shot-date').closest('.datefield').style.display = mode === 'fixed' ? '' : 'none';
+    setDateField('f-shot-date', p.watermark.fixedDate);
 
     renderGallery();
   }
@@ -732,10 +798,9 @@
     U.$('#file-camera').addEventListener('change', (e) => { importFiles(e.target.files); e.target.value = ''; });
     U.$('#file-album').addEventListener('change', (e) => { importFiles(e.target.files); e.target.value = ''; });
     U.$('#gal-filter').addEventListener('change', renderGallery);
-    U.$('#f-shot-date').addEventListener('input', (e) => {
-      state.project.watermark.fixedDate = e.target.value;
-      debouncedSave();
-      renderShoot();
+    bindDateField('f-shot-date', (iso) => {
+      state.project.watermark.fixedDate = iso;
+      save().then(renderShoot);
     });
 
     U.$('#btn-clear-sel').addEventListener('click', () => { state.selection.clear(); renderGallery(); });

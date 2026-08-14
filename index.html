@@ -54,11 +54,19 @@
     <div class="field-row">
       <div class="field">
         <label for="f-periodStart">工程期限（起）</label>
-        <input class="inp date" type="date" id="f-periodStart">
+        <div class="datefield">
+          <input class="inp" type="text" id="f-periodStart" inputmode="numeric" autocomplete="off" placeholder="115.6.1">
+          <input type="date" class="datefield-cal" id="f-periodStart-cal" tabindex="-1" aria-hidden="true">
+          <button type="button" class="datefield-btn" data-date-for="f-periodStart" aria-label="開啟日曆">📅</button>
+        </div>
       </div>
       <div class="field">
         <label for="f-periodEnd">工程期限（訖）</label>
-        <input class="inp date" type="date" id="f-periodEnd">
+        <div class="datefield">
+          <input class="inp" type="text" id="f-periodEnd" inputmode="numeric" autocomplete="off" placeholder="115.9.27">
+          <input type="date" class="datefield-cal" id="f-periodEnd-cal" tabindex="-1" aria-hidden="true">
+          <button type="button" class="datefield-btn" data-date-for="f-periodEnd" aria-label="開啟日曆">📅</button>
+        </div>
       </div>
     </div>
     <div class="period-readout" id="period-readout"></div>
@@ -85,7 +93,11 @@
     </div>
     <div class="field" id="fixed-date-field">
       <label for="f-wm-fixeddate">指定日期</label>
-      <input class="inp date" type="date" id="f-wm-fixeddate">
+      <div class="datefield">
+        <input class="inp" type="text" id="f-wm-fixeddate" inputmode="numeric" autocomplete="off" placeholder="115.8.14">
+        <input type="date" class="datefield-cal" id="f-wm-fixeddate-cal" tabindex="-1" aria-hidden="true">
+        <button type="button" class="datefield-btn" data-date-for="f-wm-fixeddate" aria-label="開啟日曆">📅</button>
+      </div>
       <div class="period-readout on" id="fixed-date-readout"></div>
     </div>
     <div class="field-row">
@@ -193,7 +205,11 @@
     <div class="picker">
       <div class="picker-label">照片日期</div>
       <div class="chips" id="chips-datemode"></div>
-      <input class="inp date shot-date" type="date" id="f-shot-date">
+      <div class="datefield shot-date">
+        <input class="inp" type="text" id="f-shot-date" inputmode="numeric" autocomplete="off" placeholder="115.8.14">
+        <input type="date" class="datefield-cal" id="f-shot-date-cal" tabindex="-1" aria-hidden="true">
+        <button type="button" class="datefield-btn" data-date-for="f-shot-date" aria-label="開啟日曆">📅</button>
+      </div>
     </div>
   </div>
 

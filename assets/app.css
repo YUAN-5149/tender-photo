@@ -66,14 +66,26 @@ main{
 select.inp{appearance:none; background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);
   background-position:calc(100% - 15px) 51%,calc(100% - 10px) 51%; background-size:5px 5px,5px 5px; background-repeat:no-repeat; padding-right:30px}
 
-/* 日期欄位（原生日曆） */
-input.date{
-  -webkit-appearance:none; appearance:none; min-height:42px;
-  font-variant-numeric:tabular-nums; text-align:left;
+/* 日期欄位：可自行鍵入（115.6.1 等寫法皆可）＋ 📅 開系統日曆 */
+.datefield{position:relative; display:block}
+.datefield .inp{
+  font-variant-numeric:tabular-nums; letter-spacing:.5px; padding-right:44px; min-height:42px;
 }
-input.date::-webkit-calendar-picker-indicator{opacity:.5; cursor:pointer; padding:2px}
-input.date::-webkit-calendar-picker-indicator:hover{opacity:1}
-input.date::-webkit-date-and-time-value{text-align:left}
+.datefield .inp.bad{border-color:#e0a49a; background:#fdf5f4}
+.datefield .inp.bad:focus{box-shadow:0 0 0 3px rgba(192,57,43,.12)}
+.datefield-btn{
+  position:absolute; top:50%; right:5px; transform:translateY(-50%);
+  width:34px; height:34px; border:none; border-radius:8px; background:transparent;
+  font-size:16px; line-height:1; cursor:pointer; opacity:.6; padding:0;
+  display:grid; place-items:center;
+}
+.datefield-btn:hover{opacity:1; background:#eef3f8}
+.datefield-btn:focus-visible{outline:2px solid var(--navy-2); outline-offset:1px; opacity:1}
+/* 原生日期輸入只用來叫出系統日曆，本身不顯示 */
+.datefield-cal{
+  position:absolute; right:14px; bottom:4px; width:1px; height:1px;
+  opacity:0; pointer-events:none; border:0; padding:0; margin:0;
+}
 
 /* 民國換算與工期天數 */
 .period-readout{margin:-2px 0 10px; display:flex; gap:9px; align-items:center; flex-wrap:wrap; font-size:13px}

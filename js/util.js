@@ -60,18 +60,61 @@
     return Math.round((d2 - d1) / 86400000) + 1;
   };
 
-  // 民國字串 "114.06.30" / "1140630" → Date；也接受西元 "2025-06-30"
-  U.parseRocInput = function (str) {
-    if (!str) return null;
-    const t = String(str).trim().replace(/[/\-]/g, '.');
-    let m = t.match(/^(\d{2,3})\.(\d{1,2})\.(\d{1,2})$/);
-    if (m) return new Date(+m[1] + 1911, +m[2] - 1, +m[3]);
-    m = t.match(/^(\d{4})\.(\d{1,2})\.(\d{1,2})$/);
-    if (m) return new Date(+m[1], +m[2] - 1, +m[3]);
-    m = t.match(/^(\d{3})(\d{2})(\d{2})$/);
-    if (m) return new Date(+m[1] + 1911, +m[2] - 1, +m[3]);
-    return U.asDate(str);
+  /* 寬容的日期輸入解析 --------------------------------------------------
+     現場常見的各種打法都吃得下，年份小於 1000 一律視為民國：
+       115.6.1      115/6/1      115-6-1
+       115年6月1日   民國115年6月1日
+       1150601      20260601     2026/6/1     2026-06-01
+       ６／１        6/1          （只給月日 → 補當年）
+     不合法的日期（13 月、2/30）回傳 null，由呼叫端提示使用者。      */
+
+  // 全形數字與符號轉半形
+  U.halfWidth = (s) => String(s == null ? '' : s)
+    .replace(/[！-～]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+    .replace(/[．。･・]/g, '.')
+    .replace(/[，、]/g, '.')
+    .replace(/　/g, ' ');
+
+  function makeDate(y, mo, d) {
+    if (!(mo >= 1 && mo <= 12) || !(d >= 1 && d <= 31)) return null;
+    const dt = new Date(y, mo - 1, d);
+    // 排除 2/30、4/31 這類被 Date 自動進位的日期
+    if (dt.getFullYear() !== y || dt.getMonth() !== mo - 1 || dt.getDate() !== d) return null;
+    return dt;
+  }
+
+  U.parseDateInput = function (str) {
+    if (str == null) return null;
+    if (str instanceof Date) return isNaN(str) ? null : str;
+
+    let t = U.halfWidth(str).trim();
+    if (!t) return null;
+
+    t = t.replace(/^(中華)?民國\s*/, '').replace(/^西元\s*/, '');
+    t = t.replace(/[年月]/g, '.').replace(/日/g, '');
+    t = t.replace(/[/\-\s]+/g, '.').replace(/\.{2,}/g, '.').replace(/^\.+|\.+$/g, '');
+    if (!t) return null;
+
+    let m = t.match(/^(\d{1,4})\.(\d{1,2})\.(\d{1,2})$/);
+    if (m) {
+      let y = +m[1];
+      if (y < 1000) y += 1911;                       // 民國
+      return makeDate(y, +m[2], +m[3]);
+    }
+
+    // 只給月日 → 補上今年
+    m = t.match(/^(\d{1,2})\.(\d{1,2})$/);
+    if (m) return makeDate(new Date().getFullYear(), +m[1], +m[2]);
+
+    // 連續數字：8 碼西元、7 碼民國
+    if (/^\d{8}$/.test(t)) return makeDate(+t.slice(0, 4), +t.slice(4, 6), +t.slice(6, 8));
+    if (/^\d{7}$/.test(t)) return makeDate(+t.slice(0, 3) + 1911, +t.slice(3, 5), +t.slice(5, 7));
+
+    return null;
   };
+
+  // 舊名稱保留
+  U.parseRocInput = U.parseDateInput;
 
   /* 字串 --------------------------------------------------------------- */
   U.esc = function (s) {
