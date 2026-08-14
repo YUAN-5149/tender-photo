@@ -31,8 +31,11 @@
    * @returns pages: [{ key, title, rows:[{ cells:[{caption, photo}] }] }]
    */
   Layout.build = function (project, photos) {
-    const mode = project.layoutMode || 'item';
+    const mode = project.layoutMode || 'column';
     if (mode === 'flow') return buildFlow(project, photos);
+    if (mode === 'column' || mode === 'column-area') {
+      return buildColumns(project, photos, mode === 'column-area');
+    }
 
     const groups = [];
     if (mode === 'area') {
@@ -118,6 +121,112 @@
     // 不分階段的工項可能產生多餘空白頁，過濾之
     return pages.filter((p, i) => p.rows.some((r) => r.cells.some((c) => c.photo)) || project.includeEmpty);
   };
+
+  /* ===== 每欄一工項（同來源範本的排法）=================================
+     一個直欄放一個工項，三列由上而下為該工項的施工前／中／後；
+     兩個直欄併成一頁，因此一頁會出現兩個工項。
+     某工項的某階段有多張照片時，會再多出一個直欄（可能落在同頁右側或次頁）。
+     ==================================================================== */
+
+  // 把單一工項（可限定區域）攤成若干直欄，每欄 = { cells:[3 格] }
+  function columnsOfItem(project, photos, item, area) {
+    const sel = photos.filter((p) => p.itemId === item.id && (!area || p.areaId === area.id));
+    if (!sel.length && !project.includeEmpty) return [];
+
+    const areaName = area ? area.name : '';
+    const stages = Store.stagesOf(item);
+    const cols = [];
+
+    // 不分階段的工項：一欄由上而下放 3 張
+    if (stages.length === 1 && stages[0] === '') {
+      const chunks = U.chunk(sel, Layout.ROWS);
+      if (!chunks.length) chunks.push([]);
+      chunks.forEach((ch) => {
+        cols.push({
+          item: item, areaName: areaName,
+          cells: new Array(Layout.ROWS).fill(0).map((_, i) => ({
+            caption: groupCaption(project, areaName, item.name, ''),
+            photo: ch[i] || null
+          }))
+        });
+      });
+      return cols;
+    }
+
+    const buckets = stages.map((s) => sel.filter((p) => (p.stage || '') === s));
+    const known = new Set(stages);
+    const strays = sel.filter((p) => !known.has(p.stage || ''));
+    if (strays.length) buckets[0] = buckets[0].concat(strays);
+
+    const depth = Math.max(1, ...buckets.map((b) => b.length));
+    for (let k = 0; k < depth; k++) {
+      const cells = stages.map((stage, si) => ({
+        caption: groupCaption(project, areaName, item.name, stage),
+        photo: (buckets[si] || [])[k] || null
+      }));
+      while (cells.length < Layout.ROWS) cells.push({ caption: '', photo: null });
+      cols.push({ item: item, areaName: areaName, cells: cells.slice(0, Layout.ROWS) });
+    }
+    return cols;
+  }
+
+  const blankColumn = () => ({
+    item: null, areaName: '',
+    cells: new Array(Layout.ROWS).fill(0).map(() => ({ caption: '', photo: null }))
+  });
+
+  function buildColumns(project, photos, splitByArea) {
+    // 同一批（batch）內的直欄才可併頁；依區域分頁時，不同區域不混在同一頁
+    const batches = [];
+    if (splitByArea && project.areas.length) {
+      project.areas.forEach((area) => {
+        const cols = [];
+        project.items.forEach((it) => { cols.push.apply(cols, columnsOfItem(project, photos, it, area)); });
+        if (cols.length) batches.push(cols);
+      });
+      // 未指定區域的照片自成一批
+      const noArea = photos.filter((p) => !p.areaId);
+      if (noArea.length) {
+        const orphan = [];
+        project.items.forEach((it) => { orphan.push.apply(orphan, columnsOfItem(project, noArea, it, null)); });
+        if (orphan.length) batches.push(orphan);
+      }
+    } else {
+      const cols = [];
+      project.items.forEach((it) => { cols.push.apply(cols, columnsOfItem(project, photos, it, null)); });
+      if (cols.length) batches.push(cols);
+    }
+
+    // 未歸類到任何工項的照片
+    const noItem = photos.filter((p) => !p.itemId || !project.items.some((i) => i.id === p.itemId));
+    if (noItem.length) {
+      const other = { id: '__other__', name: '其他', stageSet: 'none' };
+      const tagged = noItem.map((p) => Object.assign({}, p, { itemId: other.id }));
+      const cols = columnsOfItem(project, tagged, other, null);
+      if (cols.length) batches.push(cols);
+    }
+
+    const pages = [];
+    batches.forEach((cols) => {
+      U.chunk(cols, Layout.COLS).forEach((pair) => {
+        while (pair.length < Layout.COLS) pair.push(blankColumn());
+        const rows = [];
+        for (let r = 0; r < Layout.ROWS; r++) rows.push({ cells: pair.map((c) => c.cells[r]) });
+
+        const hasPhoto = rows.some((row) => row.cells.some((c) => c.photo));
+        if (!hasPhoto && !project.includeEmpty) return;
+
+        const names = pair.map((c) => (c.item ? c.item.name : '')).filter(Boolean)
+          .filter((v, i, a) => a.indexOf(v) === i);   // 同一工項佔兩欄時標題不重複
+        pages.push({
+          key: (pair[0].areaName ? pair[0].areaName + '／' : '') + names.join(' ｜ '),
+          title: names.join(' ｜ '),
+          rows: rows
+        });
+      });
+    });
+    return pages;
+  }
 
   /* 依序流水：每格自帶標題 */
   function buildFlow(project, photos) {

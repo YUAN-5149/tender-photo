@@ -75,7 +75,7 @@
   };
 
   /* ---- 結構版本：既有專案開啟時自動補齊 ---- */
-  Store.SCHEMA = 3;
+  Store.SCHEMA = 4;
 
   /**
    * 回傳 true 表示有調整、需要存回。
@@ -83,6 +83,8 @@
    *     事後在相簿改工項或階段時不會跟著改，會與 Word 標題列不一致。
    * v3：浮水印開關併入 dateMode（新增 'none'）—— 原本 enabled 與 dateMode
    *     可以互相矛盾（關掉浮水印卻仍顯示「EXIF 拍攝時間」），改為單一來源。
+   * v4：版面預設改為「每欄一工項」—— 原本左右兩欄放同一工項的同階段，
+   *     與來源範本不符（範本一頁左右各為不同工項）。
    */
   Store.migrate = function (p) {
     if (!p) return false;
@@ -101,6 +103,10 @@
       if (p.watermark.enabled === false) p.watermark.dateMode = 'none';
       delete p.watermark.enabled;
     }
+    if (from < 4) {
+      if (p.layoutMode === 'item' || !p.layoutMode) p.layoutMode = 'column';
+      else if (p.layoutMode === 'area') p.layoutMode = 'column-area';
+    }
     p.schemaVersion = Store.SCHEMA;
     return true;
   };
@@ -118,7 +124,9 @@
       vendor: '',                 // 施工廠商
       areas: [],                  // [{id,name}] 位置區域
       items: [],                  // [{id,name,stageSet}] 工項
-      layoutMode: 'item',         // item = 依工項分頁；area = 依區域→工項；flow = 依序流水
+      // column = 每欄一工項（一頁 2 工項，同來源範本）；column-area = 再依區域分頁
+      // item = 每頁一工項（每階段左右 2 張）；flow = 依序流水
+      layoutMode: 'column',
       captionWithArea: false,     // 標題是否含位置區域
       includeEmpty: false,        // 是否保留無照片的空白版面
       zipStructure: 'item',       // ZIP 資料夾結構
