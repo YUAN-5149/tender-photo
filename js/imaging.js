@@ -153,8 +153,9 @@
       cv.width = w; cv.height = h;
       const ctx = cv.getContext('2d');
       ctx.drawImage(src, 0, 0);
-      if (dateText) stamp(ctx, w, h, dateText, 'br');
+      // 底條加大後左右兩條在窄圖上可能相碰，日期後畫確保不被工項文字蓋住
       if (label) stamp(ctx, w, h, label, 'bl');
+      if (dateText) stamp(ctx, w, h, dateText, 'br');
       if (src.close) src.close();
       return new Promise((res) => cv.toBlob(res, 'image/jpeg', quality || 0.86));
     });
@@ -172,25 +173,30 @@
   };
 
   /* ---- 浮水印文字 ---- */
+  /* 底條貼齊影像角落並加大加深 ------------------------------------------
+     相機自己燒在右下角的日期常會露出來，所以底條不留邊、直接延伸到影像
+     邊緣，並用接近不透明的黑，把底下原有的數字蓋掉。               */
   function stamp(ctx, w, h, text, pos) {
     if (!text) return;
-    const fs = Math.max(16, Math.round(Math.min(w, h) * 0.045));
-    const pad = Math.round(fs * 0.6);
+    const fs = Math.max(18, Math.round(Math.min(w, h) * 0.052));
     ctx.save();
     ctx.font = '700 ' + fs + 'px "Microsoft JhengHei","PingFang TC","Noto Sans TC",sans-serif';
-    ctx.textBaseline = 'alphabetic';
+    ctx.textBaseline = 'middle';
     const tw = ctx.measureText(text).width;
-    let x, y;
-    if (pos === 'bl') { x = pad; y = h - pad; }
-    else { x = w - tw - pad; y = h - pad; }
 
-    // 半透明底條，確保白字在亮背景仍可辨識
-    ctx.fillStyle = 'rgba(0,0,0,0.42)';
-    ctx.fillRect(x - pad * 0.5, y - fs, tw + pad, fs * 1.35);
+    const boxW = Math.min(w, Math.round(tw + fs * 1.6));
+    const boxH = Math.round(fs * 2.0);
+    const boxX = pos === 'bl' ? 0 : w - boxW;   // 貼齊左下或右下角
+    const boxY = h - boxH;
+
+    ctx.fillStyle = 'rgba(0,0,0,0.88)';
+    ctx.fillRect(boxX, boxY, boxW, boxH);
+
     ctx.fillStyle = '#fff';
-    ctx.shadowColor = 'rgba(0,0,0,0.85)';
-    ctx.shadowBlur = Math.round(fs * 0.25);
-    ctx.fillText(text, x, y + fs * 0.12);
+    ctx.shadowColor = 'rgba(0,0,0,0.9)';
+    ctx.shadowBlur = Math.round(fs * 0.3);
+    ctx.textAlign = 'center';
+    ctx.fillText(text, boxX + boxW / 2, boxY + boxH / 2, boxW - fs * 0.4);
     ctx.restore();
   }
 
