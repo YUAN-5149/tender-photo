@@ -313,6 +313,15 @@
       <label for="ed-note">備註（會加在標題後）</label>
       <input class="inp" id="ed-note" placeholder="例：3F 走廊東側">
     </div>
+    <div class="field" id="ed-date-field">
+      <label for="ed-date">照片日期（右下角浮水印）</label>
+      <div class="datefield">
+        <input class="inp" type="text" id="ed-date" inputmode="numeric" autocomplete="off" placeholder="留空＝不蓋日期">
+        <input type="date" class="datefield-cal" id="ed-date-cal" tabindex="-1" aria-hidden="true">
+        <button type="button" class="datefield-btn" data-date-for="ed-date" aria-label="開啟日曆">📅</button>
+      </div>
+      <div class="period-readout" id="ed-date-note"></div>
+    </div>
     <div class="btn-row">
       <button class="btn primary" id="ed-save">儲存</button>
       <button class="btn danger" id="ed-delete">刪除照片</button>
@@ -324,6 +333,7 @@
 <div class="bulk" id="bulk-bar">
   已選 <b id="bulk-count">0</b> 張
   <button class="btn tiny" id="btn-bulk-assign">套用目前選取的工項</button>
+  <span class="bulk-note" id="bulk-date-note"></span>
   <button class="btn tiny danger" id="btn-bulk-delete">刪除</button>
   <button class="btn tiny ghost" id="btn-clear-sel">取消</button>
 </div>

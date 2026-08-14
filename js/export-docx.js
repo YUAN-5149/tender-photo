@@ -112,11 +112,14 @@
 
     let done = 0;
     const blobMap = {};
-    const chain = ids.reduce((prev, id) => prev.then(() => U.blobToArrayBuffer(used[id].blob).then((buf) => {
-      blobMap[id] = new Uint8Array(buf);
-      done++;
-      if (onProgress) onProgress(done, ids.length, '讀取照片 ' + done + '/' + ids.length);
-    })), Promise.resolve());
+    // 浮水印於此刻套用，因此改過日期或格式後重新匯出即會反映
+    const chain = ids.reduce((prev, id) => prev.then(() => Img.render(used[id], project)
+      .then((blob) => U.blobToArrayBuffer(blob))
+      .then((buf) => {
+        blobMap[id] = new Uint8Array(buf);
+        done++;
+        if (onProgress) onProgress(done, ids.length, '處理照片 ' + done + '/' + ids.length);
+      })), Promise.resolve());
 
     return chain.then(() => {
       if (onProgress) onProgress(ids.length, ids.length, '組版中…');

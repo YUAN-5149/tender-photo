@@ -736,6 +736,15 @@
     });
     U.$('#bulk-bar').classList.toggle('on', state.selection.size > 0);
     U.$('#bulk-count').textContent = state.selection.size;
+
+    // 讓使用者按下去之前就知道日期會不會一併改寫
+    const wm = state.project.watermark;
+    const mode = wm.dateMode || 'exif';
+    const fixed = mode === 'fixed' ? U.parseDateInput(wm.fixedDate) : null;
+    U.$('#bulk-date-note').textContent =
+      mode === 'fixed' && fixed ? '並押上 ' + (wm.dateFormat === 'ROC' ? U.toRoc(fixed) : U.toAd(fixed))
+        : mode === 'none' ? '並移除日期'
+          : '';
   }
 
   function toggleSel(id) {
@@ -781,6 +790,8 @@
           blob: out.blob, thumb: out.thumb, w: out.w, h: out.h, size: out.size,
           areaId: shot.areaId || '', itemId: shot.itemId || '', stage: shot.stage || '',
           note: '', takenAt: out.takenAt, dateSource: out.dateSource, stamped: out.stamped,
+          // 圖檔保持乾淨，浮水印於匯出時才套用，日期事後仍可修改
+          baked: out.baked, stampDate: out.stampDate, label: out.label,
           seq: ++seq, createdAt: Date.now()
         };
         if (out.dateSource !== 'exif' && out.dateSource !== 'fixed') noExif++;
@@ -804,6 +815,7 @@
 
   /* --- 單張編輯 --- */
   let editingId = null;
+  let editingStamp;            // undefined＝未更動；null＝改為不蓋日期；數字＝時間戳
   function openEditor(id) {
     const ph = state.photos.find((x) => x.id === id);
     if (!ph) return;
@@ -832,6 +844,18 @@
 
     fillStageSelect(ph.itemId, ph.stage);
     U.$('#ed-note').value = ph.note || '';
+
+    // 浮水印日期：舊版匯入的照片已燒進圖片，無法再改
+    const locked = ph.baked === undefined || ph.baked;
+    editingStamp = undefined;
+    U.$('#ed-date').value = ph.stampDate ? U.toRoc(ph.stampDate) : '';
+    U.$('#ed-date').disabled = locked;
+    U.$('.datefield-btn[data-date-for="ed-date"]').disabled = locked;
+    U.$('#ed-date-note').className = 'period-readout' + (locked ? ' on bad' : '');
+    U.$('#ed-date-note').textContent = locked
+      ? '這張為舊版匯入，浮水印已燒進圖片，日期無法變更'
+      : '';
+
     U.$('#editor').classList.add('on');
   }
 
@@ -862,13 +886,57 @@
     U.$('#btn-bulk-assign').addEventListener('click', () => {
       const c = state.capture;
       if (!c.itemId) { toast('請先於上方選擇工項', 'err'); return; }
+
       const ids = Array.from(state.selection);
+      const applied = applyDateToPhotos(ids.map((id) => state.photos.find((x) => x.id === id)));
+
       Promise.all(ids.map((id) => {
         const ph = state.photos.find((x) => x.id === id);
         ph.areaId = c.areaId || ''; ph.itemId = c.itemId; ph.stage = c.stage || '';
         return Store.savePhoto(ph);
-      })).then(() => { state.selection.clear(); toast('已套用至 ' + ids.length + ' 張'); render(); });
+      })).then(() => {
+        state.selection.clear();
+        let msg = '已套用至 ' + ids.length + ' 張';
+        if (applied.changed) msg += '，日期改為 ' + applied.text;
+        toast(msg);
+        if (applied.locked) {
+          setTimeout(() => toast(applied.locked + ' 張為舊版匯入、浮水印已燒進圖片，日期無法變更', 'err'), 2700);
+        }
+        render();
+      });
     });
+
+    /* 依目前的「照片日期」設定改寫選取照片的日期 ----------------------
+       指定日期 → 押上該日；不需日期 → 移除日期。
+       EXIF 模式代表「各張各自的拍攝時間」，不應被批次覆蓋，故不動。
+       舊版匯入的照片浮水印已燒在圖裡，無法重蓋，另行提示。          */
+    function applyDateToPhotos(photos) {
+      const wm = state.project.watermark;
+      const mode = wm.dateMode || 'exif';
+      if (mode === 'exif') return { changed: 0, locked: 0, text: '' };
+
+      const fixed = mode === 'fixed' ? U.parseDateInput(wm.fixedDate) : null;
+      if (mode === 'fixed' && !fixed) return { changed: 0, locked: 0, text: '' };
+
+      let changed = 0, locked = 0;
+      photos.forEach((ph) => {
+        if (!ph) return;
+        if (ph.baked === undefined || ph.baked) { locked++; return; }
+        if (fixed) {
+          ph.stampDate = fixed.getTime();
+          ph.takenAt = fixed.getTime();       // ZIP 檔名與 CSV 一併對齊
+          ph.dateSource = 'fixed';
+        } else {
+          ph.stampDate = null;                // 不需日期
+          ph.dateSource = 'none';
+        }
+        changed++;
+      });
+      return {
+        changed: changed, locked: locked,
+        text: fixed ? (wm.dateFormat === 'ROC' ? U.toRoc(fixed) : U.toAd(fixed)) : '不蓋日期'
+      };
+    }
     U.$('#btn-bulk-delete').addEventListener('click', () => {
       const ids = Array.from(state.selection);
       if (!confirmBox('刪除選取的 ' + ids.length + ' 張照片？')) return;
@@ -879,6 +947,14 @@
     });
 
     U.$('#ed-item').addEventListener('change', (e) => fillStageSelect(e.target.value, ''));
+    bindDateField('ed-date', (iso) => {
+      editingStamp = iso ? U.parseDateInput(iso).getTime() : null;
+      const note = U.$('#ed-date-note');
+      note.className = 'period-readout on';
+      note.textContent = editingStamp
+        ? '儲存後將押上 ' + (state.project.watermark.dateFormat === 'ROC' ? U.toRoc(editingStamp) : U.toAd(editingStamp))
+        : '儲存後這張不會蓋日期';
+    });
     U.$('#ed-close').addEventListener('click', closeEditor);
     U.$('#ed-save').addEventListener('click', () => {
       const ph = state.photos.find((x) => x.id === editingId);
@@ -887,6 +963,11 @@
       ph.itemId = U.$('#ed-item').value;
       ph.stage = U.$('#ed-stage').value;
       ph.note = U.$('#ed-note').value.trim();
+      if (editingStamp !== undefined && !(ph.baked === undefined || ph.baked)) {
+        ph.stampDate = editingStamp;
+        if (editingStamp) { ph.takenAt = editingStamp; ph.dateSource = 'fixed'; }
+        else ph.dateSource = 'none';
+      }
       Store.savePhoto(ph).then(() => { closeEditor(); toast('已更新'); render(); });
     });
     U.$('#ed-delete').addEventListener('click', () => {
@@ -918,10 +999,16 @@
 
   function renderPreview() {
     const box = U.$('#preview');
-    box.innerHTML = ExportPrint.render(state.project, state.photos);
-    box.classList.add('on');
-    U.$('#btn-preview').textContent = '重新整理預覽';
-    fitPreview();
+    busy.show('產生預覽…');
+    return ExportPrint.render(state.project, state.photos, busy.progress).then((html) => {
+      box.innerHTML = html;
+      box.classList.add('on');
+      U.$('#btn-preview').textContent = '重新整理預覽';
+      fitPreview();
+      busy.hide();
+    }).catch((e) => {
+      console.error(e); busy.hide(); toast('預覽產生失敗：' + e.message, 'err');
+    });
   }
 
   /* A4 頁面固定 210mm 寬，依容器寬度換算縮放比，任何螢幕都剛好塞滿不橫向捲動 */
@@ -956,7 +1043,7 @@
 
     U.$('#btn-pdf').addEventListener('click', () => {
       busy.show('準備列印版面…');
-      ExportPrint.print(state.project, state.photos)
+      ExportPrint.print(state.project, state.photos, busy.progress)
         .then(() => busy.hide())
         .catch((e) => { console.error(e); busy.hide(); toast('列印失敗：' + e.message, 'err'); });
     });

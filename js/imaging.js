@@ -103,15 +103,11 @@
         ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(src, 0, 0, w, h);
 
-        // dateMode 'none'：純圖片，日期與工項都不燒上去（takenAt 仍照常記錄，
-        // ZIP 檔名與 CSV 還是要用）
+        // 浮水印不在此燒進圖片，改於匯出時套用（見 Img.render）。
+        // 這樣事後修改日期或格式都能重新反映，不會蓋成兩層。
+        // dateMode 'none'：不蓋日期，但 takenAt 仍照常記錄供 ZIP 檔名與 CSV 使用。
         const wm = opts.watermark || {};
         const stamped = wm.dateMode !== 'none';
-        if (stamped) {
-          const dateText = wm.dateFormat === 'ROC' ? U.toRoc(takenAt) : U.toAd(takenAt);
-          stamp(ctx, w, h, dateText, 'br');
-          if (wm.showLabel && opts.label) stamp(ctx, w, h, opts.label, 'bl');
-        }
 
         if (src.close) src.close();
 
@@ -125,11 +121,54 @@
               blob: blob,
               thumb: thumbCv.toDataURL('image/jpeg', 0.7),
               w: w, h: h, size: blob.size, takenAt: takenAt.getTime(), dateSource: dateSource,
-              stamped: stamped
+              stamped: stamped,
+              baked: false,                                   // 圖檔本身乾淨，匯出時才蓋
+              stampDate: stamped ? takenAt.getTime() : null,  // null＝這張不蓋日期
+              label: (wm.showLabel && opts.label) ? opts.label : ''
             });
           }, 'image/jpeg', quality);
         });
       });
+  };
+
+  /* ---- 匯出時套用浮水印 ------------------------------------------------
+     photo.baked 為 undefined（舊版匯入）表示浮水印已經燒在圖裡，直接沿用；
+     其餘一律依目前的 stampDate 與日期格式重新蓋，改日期後匯出即刻反映。  */
+  Img.stampTextOf = function (photo, project) {
+    if (!photo.stampDate) return '';
+    const fmt = (project && project.watermark && project.watermark.dateFormat) === 'ROC' ? U.toRoc : U.toAd;
+    return fmt(photo.stampDate);
+  };
+
+  Img.render = function (photo, project, quality) {
+    if (photo.baked === undefined || photo.baked) return Promise.resolve(photo.blob);
+
+    const dateText = Img.stampTextOf(photo, project);
+    const label = photo.label || '';
+    if (!dateText && !label) return Promise.resolve(photo.blob);
+
+    return Img.load(photo.blob).then((src) => {
+      const w = src.width, h = src.height;
+      const cv = document.createElement('canvas');
+      cv.width = w; cv.height = h;
+      const ctx = cv.getContext('2d');
+      ctx.drawImage(src, 0, 0);
+      if (dateText) stamp(ctx, w, h, dateText, 'br');
+      if (label) stamp(ctx, w, h, label, 'bl');
+      if (src.close) src.close();
+      return new Promise((res) => cv.toBlob(res, 'image/jpeg', quality || 0.86));
+    });
+  };
+
+  // 一次算好整批，匯出時共用（避免同一張重複重繪）
+  Img.renderAll = function (photos, project, onProgress) {
+    const map = {};
+    let done = 0;
+    return photos.reduce((chain, p) => chain.then(() => Img.render(p, project).then((b) => {
+      map[p.id] = b;
+      done++;
+      if (onProgress) onProgress(done, photos.length, '套用浮水印 ' + done + '/' + photos.length);
+    })), Promise.resolve()).then(() => map);
   };
 
   /* ---- 浮水印文字 ---- */

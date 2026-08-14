@@ -11,14 +11,20 @@
 
   /**
    * @param opts { includeDocx:Blob|null, structure:'area'|'item'|'flat', onProgress }
+   * 會先套用浮水印再打包，ZIP 內的照片與 Word／PDF 完全一致。
    */
   Z.build = function (project, photos, opts) {
     opts = opts || {};
+    if (!opts.blobMap) {
+      return Img.renderAll(photos, project, opts.onProgress)
+        .then((blobMap) => Z.build(project, photos, Object.assign({}, opts, { blobMap: blobMap })));
+    }
     const zip = new JSZip();
     const structure = opts.structure || 'item';
     const rows = [['序號', '檔名', '位置區域', '工項', '階段', '拍攝日期', '備註']];
 
     const counters = {};
+    const blobMap = opts.blobMap || {};
     photos.forEach((p, i) => {
       const area = nameOf(project.areas, p.areaId, '未分區');
       const item = nameOf(project.items, p.itemId, '未分類');
@@ -35,7 +41,7 @@
       const fname = U.safeName([seq, area !== '未分區' ? area : '', item, stage !== '無階段' ? stage : '', date]
         .filter(Boolean).join('_')) + '.jpg';
 
-      zip.file(dir + fname, p.blob);
+      zip.file(dir + fname, blobMap[p.id] || p.blob);
       rows.push([String(i + 1), dir + fname, area, item, stage, U.toRoc(p.takenAt || p.createdAt), p.note || '']);
       if (opts.onProgress) opts.onProgress(i + 1, photos.length, '打包 ' + (i + 1) + '/' + photos.length);
     });

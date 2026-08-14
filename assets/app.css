@@ -344,6 +344,10 @@ select.inp{appearance:none; background-image:linear-gradient(45deg,transparent 5
   max-width:880px; margin:0 auto;
 }
 .bulk.on{display:flex}
+.bulk-note{font-size:12px; font-weight:500; opacity:.85}
+.bulk-note:empty{display:none}
+.datefield .inp:disabled{background:#eef1f4; color:var(--muted); cursor:not-allowed}
+.datefield-btn:disabled{opacity:.25; cursor:not-allowed}
 
 /* 新版本提示 */
 .updatebar{
