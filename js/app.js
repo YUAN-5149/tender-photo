@@ -319,6 +319,59 @@
     });
   }
 
+  /* ===== 工項照片完成度 ==============================================
+     依該工項的階段組合判定：
+       無照片   —— 一張都還沒拍
+       尚未完整 —— 有照片，但還有階段是空的
+       已完成   —— 每個階段都至少有一張
+     不分階段的工項只看有沒有照片。                                   */
+  function itemPhotoStatus(item) {
+    const stages = Store.stagesOf(item);
+    const list = state.photos.filter((x) => x.itemId === item.id);
+    const flat = stages.length === 1 && stages[0] === '';
+
+    if (flat) {
+      return {
+        state: list.length ? 'full' : 'empty',
+        done: list.length ? 1 : 0, need: 1, total: list.length, flat: true, missing: []
+      };
+    }
+    const missing = stages.filter((s) => !list.some((x) => (x.stage || '') === s));
+    return {
+      state: !list.length ? 'empty' : (missing.length ? 'partial' : 'full'),
+      done: stages.length - missing.length, need: stages.length,
+      total: list.length, flat: false, missing: missing
+    };
+  }
+
+  const STATE_LABEL = { full: '已完成', partial: '尚未完整', empty: '無照片' };
+
+  function statusBadge(item) {
+    const st = itemPhotoStatus(item);
+    const text = st.flat ? st.total + ' 張' : st.done + '/' + st.need;
+    const title = STATE_LABEL[st.state] + '：'
+      + (st.total
+        ? '共 ' + st.total + ' 張' + (st.missing.length ? '，缺 ' + st.missing.join('、') : '')
+        : '尚未拍攝');
+    return U.el('span', { class: 'ph-state ' + st.state, title: title, 'aria-label': title }, [
+      U.el('i', { class: 'ph-dot', 'aria-hidden': 'true' }),
+      U.el('b', { text: text })
+    ]);
+  }
+
+  function renderItemLegend() {
+    const box = U.$('#item-legend');
+    if (!box) return;
+    const p = state.project;
+    if (!p.items.length) { box.innerHTML = ''; return; }
+
+    const n = { full: 0, partial: 0, empty: 0 };
+    p.items.forEach((it) => { n[itemPhotoStatus(it).state]++; });
+    box.innerHTML = ['full', 'partial', 'empty'].map((k) =>
+      '<span class="ph-state ' + k + '"><i class="ph-dot"></i>' +
+      U.esc(STATE_LABEL[k]) + ' <b>' + n[k] + '</b></span>').join('');
+  }
+
   /* ===== 2. 工項與區域 ===== */
   function renderSetup() {
     const p = state.project;
@@ -345,6 +398,7 @@
           oninput: (e) => { it.name = e.target.value; debouncedSave(); }
         }),
         sel,
+        statusBadge(it),
         U.el('div', { class: 'row-ops' }, [
           U.el('button', { class: 'btn tiny', text: '↑', onclick: () => { U.move(p.items, idx, idx - 1); save().then(render); } }),
           U.el('button', { class: 'btn tiny', text: '↓', onclick: () => { U.move(p.items, idx, idx + 1); save().then(render); } }),
@@ -365,6 +419,7 @@
 
     U.$('#area-count').textContent = p.areas.length ? '共 ' + p.areas.length + ' 區' : '';
     U.$('#item-count').textContent = p.items.length ? '共 ' + p.items.length + ' 項' : '';
+    renderItemLegend();
 
     renderSortMode('area');
     renderSortMode('item');

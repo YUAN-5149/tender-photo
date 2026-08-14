@@ -153,6 +153,35 @@ select.inp{appearance:none; background-image:linear-gradient(45deg,transparent 5
    窄螢幕會換到第二行，縮排對齊上一行的輸入框（序號 20 ＋ gap 7） */
 .row-ops{display:none; gap:4px; flex:none; margin-left:27px}
 
+/* 工項照片完成度：實心＝已完成、半實心＝尚未完整、空心＝無照片 */
+.ph-state{
+  display:inline-flex; align-items:center; gap:5px; flex:none;
+  padding:4px 10px; border-radius:999px; border:1px solid;
+  font-size:12px; font-weight:700; white-space:nowrap;
+  font-variant-numeric:tabular-nums; background:#fff;
+}
+.ph-dot{
+  width:11px; height:11px; border-radius:50%; flex:none;
+  border:2px solid currentColor; box-sizing:border-box;
+}
+.ph-state.full{color:var(--ok); border-color:#b7dcc6; background:#eaf6ef}
+.ph-state.full .ph-dot{background:currentColor}
+.ph-state.partial{color:var(--amber-d); border-color:#f0d9a8; background:#fdf6e7}
+.ph-state.partial .ph-dot{background:linear-gradient(90deg,currentColor 50%,#fff 50%)}
+.ph-state.empty{color:var(--muted); border-color:var(--line)}
+.ph-state.empty .ph-dot{background:transparent}
+
+/* 圖示說明＋各狀態項數 */
+.state-legend{display:flex; gap:7px; flex-wrap:wrap; margin:0 0 11px}
+.state-legend:empty{display:none}
+.state-legend .ph-state{font-weight:600}
+.state-legend b{font-weight:800; margin-left:1px}
+
+/* 一律靠列的最右側；窄螢幕換行時也貼齊右邊，不會掉到行首 */
+.edit-row .ph-state{margin-left:auto}
+/* 拖移模式：階段下拉收起，完成度緊接名稱，握把仍在最右 */
+.sorting .edit-row .ph-state{order:1; margin-left:auto}
+
 /* 列數統計，直接看得出建了幾項 */
 .h3-count{margin-left:5px; font-size:12px; font-weight:500; color:var(--muted)}
 
