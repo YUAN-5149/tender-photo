@@ -726,7 +726,12 @@
     U.$('#gal-count').textContent = list.length + ' 張';
 
     if (!list.length) {
-      box.appendChild(U.el('div', { class: 'hint pad', text: '尚無照片，按下方相機按鈕開始拍攝。' }));
+      const canDrag = window.matchMedia && window.matchMedia('(hover: hover)').matches;
+      box.appendChild(U.el('div', {
+        class: 'hint pad',
+        text: canDrag ? '尚無照片。按上方按鈕匯入，或直接把照片拖曳到這張卡片。'
+          : '尚無照片，按上方相機按鈕開始拍攝。'
+      }));
       return;
     }
     list.forEach((ph) => {
@@ -886,7 +891,47 @@
     editingId = null;
   }
 
+  /* ===== 桌機：把照片直接拖進相簿 ====================================
+     沿用與相機／相簿匯入相同的流程，因此區域、工項、階段與日期設定
+     一律比照按下快門當下的選取。                                     */
+  const isFileDrag = (e) => !!(e.dataTransfer
+    && Array.prototype.indexOf.call(e.dataTransfer.types || [], 'Files') >= 0);
+
+  function bindDropZone() {
+    const zone = U.$('#drop-zone');
+    if (!zone) return;
+    let depth = 0;
+    const clear = () => { depth = 0; zone.classList.remove('drop-over'); };
+
+    zone.addEventListener('dragenter', (e) => {
+      if (!isFileDrag(e)) return;
+      e.preventDefault(); depth++; zone.classList.add('drop-over');
+    });
+    zone.addEventListener('dragover', (e) => {
+      if (!isFileDrag(e)) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+    });
+    zone.addEventListener('dragleave', (e) => {
+      if (!isFileDrag(e)) return;
+      depth--; if (depth <= 0) clear();
+    });
+    zone.addEventListener('drop', (e) => {
+      if (!isFileDrag(e)) return;
+      e.preventDefault(); clear();
+      const files = Array.prototype.filter.call(e.dataTransfer.files || [], (f) => /^image\//.test(f.type));
+      if (!files.length) { toast('請拖曳圖片檔（JPG／PNG）', 'err'); return; }
+      importFiles(files);
+    });
+
+    // 拖到其他地方時擋掉瀏覽器的預設行為，避免整頁被檔案取代
+    ['dragover', 'drop'].forEach((t) => window.addEventListener(t, (e) => {
+      if (isFileDrag(e) && !(e.target.closest && e.target.closest('#drop-zone'))) e.preventDefault();
+    }));
+  }
+
   function bindShoot() {
+    bindDropZone();
     U.$('#file-camera').addEventListener('change', (e) => { importFiles(e.target.files); e.target.value = ''; });
     U.$('#file-album').addEventListener('change', (e) => { importFiles(e.target.files); e.target.value = ''; });
     U.$('#gal-filter').addEventListener('change', renderGallery);

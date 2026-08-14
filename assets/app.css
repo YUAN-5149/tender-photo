@@ -300,6 +300,17 @@ select.inp{appearance:none; background-image:linear-gradient(45deg,transparent 5
 .shoot-actions .btn{flex:1 1 150px}
 
 /* ---- 相簿 ---- */
+/* 拖曳照片進相簿（桌機） */
+#drop-zone{position:relative}
+#drop-zone.drop-over{outline:2px dashed var(--amber); outline-offset:-5px; background:#fffbf2}
+#drop-zone.drop-over::after{
+  content:attr(data-drop-hint); position:absolute; inset:0; z-index:5;
+  display:grid; place-items:center; pointer-events:none;
+  background:rgba(255,255,255,.86); border-radius:var(--r);
+  font-size:16px; font-weight:700; color:var(--navy);
+}
+#drop-zone.drop-over *{pointer-events:none}
+
 .gal-head{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:9px}
 .gal-count{font-size:12px; color:var(--muted)}
 .gallery{display:grid; grid-template-columns:repeat(auto-fill,minmax(104px,1fr)); gap:8px}
