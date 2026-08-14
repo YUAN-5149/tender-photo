@@ -272,11 +272,29 @@ select.inp{appearance:none; background-image:linear-gradient(45deg,transparent 5
 .picker-label{font-size:11px; color:var(--muted); font-weight:700; margin-bottom:5px}
 .chips{display:flex; flex-wrap:wrap; gap:6px}
 .chip{
+  display:inline-flex; align-items:center; gap:6px;
   border:1px solid var(--line); background:#fff; border-radius:999px;
   padding:6px 13px; font:inherit; font-size:13px; cursor:pointer; transition:.15s;
 }
 .chip:hover{border-color:var(--navy-2)}
 .chip.on{background:var(--navy); border-color:var(--navy); color:#fff; font-weight:600}
+
+/* 工項晶片的照片完成度：與工項清單同一套顏色邏輯 */
+.chip .ph-dot{width:9px; height:9px}
+.chip.st-full{border-color:#b7dcc6; background:#eaf6ef; color:var(--ok)}
+.chip.st-full .ph-dot{background:currentColor}
+.chip.st-partial{border-color:#f0d9a8; background:#fdf6e7; color:var(--amber-d)}
+.chip.st-partial .ph-dot{background:linear-gradient(90deg,currentColor 50%,#fff 50%)}
+.chip.st-empty{border-color:var(--line); background:#fff; color:var(--muted)}
+.chip.st-empty .ph-dot{background:transparent}
+
+/* 選取中仍以深藍填滿表示「目前在拍這一項」，圓點保留狀態顏色 */
+.chip.on.st-full, .chip.on.st-partial, .chip.on.st-empty{
+  background:var(--navy); border-color:var(--navy); color:#fff;
+}
+.chip.on.st-full .ph-dot{border-color:#7fd3a4; background:#7fd3a4}
+.chip.on.st-partial .ph-dot{border-color:#ffc86b; background:linear-gradient(90deg,#ffc86b 50%,transparent 50%)}
+.chip.on.st-empty .ph-dot{border-color:rgba(255,255,255,.75); background:transparent}
 
 .shoot-actions{display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap}
 .shoot-actions .btn{flex:1 1 150px}

@@ -346,13 +346,17 @@
 
   const STATE_LABEL = { full: '已完成', partial: '尚未完整', empty: '無照片' };
 
-  function statusBadge(item) {
-    const st = itemPhotoStatus(item);
-    const text = st.flat ? st.total + ' 張' : st.done + '/' + st.need;
-    const title = STATE_LABEL[st.state] + '：'
+  function statusTitle(st) {
+    return STATE_LABEL[st.state] + '：'
       + (st.total
         ? '共 ' + st.total + ' 張' + (st.missing.length ? '，缺 ' + st.missing.join('、') : '')
         : '尚未拍攝');
+  }
+
+  function statusBadge(item) {
+    const st = itemPhotoStatus(item);
+    const text = st.flat ? st.total + ' 張' : st.done + '/' + st.need;
+    const title = statusTitle(st);
     return U.el('span', { class: 'ph-state ' + st.state, title: title, 'aria-label': title }, [
       U.el('i', { class: 'ph-dot', 'aria-hidden': 'true' }),
       U.el('b', { text: text })
@@ -650,7 +654,11 @@
       c.areaId = c.areaId === id ? '' : id; renderShoot();
     }, '尚未建立區域');
 
-    chips('#chips-item', p.items.map((i) => ({ id: i.id, name: i.name || '（未命名）' })), c.itemId, (id) => {
+    // 工項晶片沿用工項清單的完成度顏色：綠＝已完成、琥珀＝尚未完整、灰＝無照片
+    chips('#chips-item', p.items.map((i) => {
+      const s = itemPhotoStatus(i);
+      return { id: i.id, name: i.name || '（未命名）', state: s.state, title: statusTitle(s) };
+    }), c.itemId, (id) => {
       c.itemId = c.itemId === id ? '' : id;
       const st = currentStages();
       if (st.indexOf(c.stage) < 0) c.stage = st[0];
@@ -679,6 +687,8 @@
     renderGallery();
   }
 
+  /* x = { id, name, state?, title? }
+     state 為 full／partial／empty 時，晶片會帶上與工項清單一致的狀態顏色與圓點 */
   function chips(sel, list, active, onPick, emptyText) {
     const box = U.$(sel);
     box.innerHTML = '';
@@ -687,11 +697,14 @@
       return;
     }
     list.forEach((x) => {
+      const kids = [];
+      if (x.state) kids.push(U.el('i', { class: 'ph-dot', 'aria-hidden': 'true' }));
+      kids.push(U.el('span', { text: x.name }));
       box.appendChild(U.el('button', {
-        class: 'chip' + (x.id === active ? ' on' : ''),
-        text: x.name,
+        class: 'chip' + (x.id === active ? ' on' : '') + (x.state ? ' st-' + x.state : ''),
+        title: x.title || null,
         onclick: () => onPick(x.id)
-      }));
+      }, kids));
     });
   }
 
